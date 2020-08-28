@@ -11,6 +11,7 @@ env.evaluate(
   bg.source = "background",
   n.background = 10000,
   test.eval = FALSE,
+  verbose = FALSE,
   ...
 )
 }
@@ -27,6 +28,8 @@ env.evaluate(
 
 \item{test.eval}{When set to "true", env.evaluate evaluates the test data stored in the model object instead of the training data.}
 
+\item{verbose}{Controls printing of various messages progress reports.  Defaults to FALSE.}
+
 \item{...}{Arguments to be passed to othfer functions}
 }
 \value{
@@ -36,10 +39,12 @@ A dismo evaluate object measuring the performance of model predictions in enviro
 Calculates evaluation metrics (AUC, etc.) using latin hypercube sampling in environment space
 }
 \examples{
+\donttest{
 data(iberolacerta.clade)
 data(euro.worldclim)
 cyreni <- iberolacerta.clade$species$cyreni
 cyreni.glm <- enmtools.glm(cyreni, euro.worldclim, test.prop = 0.2,
 f = pres ~ bio1 + bio12, nback = 500)
 env.evaluate(cyreni, cyreni.glm,  euro.worldclim)
+}
 }

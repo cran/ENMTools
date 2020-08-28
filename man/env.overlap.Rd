@@ -13,7 +13,8 @@ env.overlap(
   cor.method = "spearman",
   chunk.size = 1e+05,
   recal.model.1 = NA,
-  recal.model.2 = NA
+  recal.model.2 = NA,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -34,6 +35,8 @@ env.overlap(
 \item{recal.model.1}{Optional.  The output of enmtools.recalibrate for model 1, which needs to have been run with "recalibrate = TRUE".}
 
 \item{recal.model.2}{Optional.  The output of enmtools.recalibrate for model 2, which needs to have been run with "recalibrate = TRUE".}
+
+\item{verbose}{Controls printing of various messages progress reports.  Defaults to FALSE.}
 }
 \value{
 A list of values measuring the overlap between models in environment space, as well as some plots depicting change of the estimates as a function of how many samples were used, which are included as a sort of convergence diagnostic.
@@ -42,6 +45,7 @@ A list of values measuring the overlap between models in environment space, as w
 Calculates overlap between models in environment space using latin hypercube sampling
 }
 \examples{
+\donttest{
 data(iberolacerta.clade)
 data(euro.worldclim)
 cyreni <- iberolacerta.clade$species$cyreni
@@ -49,4 +53,5 @@ monticola <- iberolacerta.clade$species$monticola
 cyreni.glm <- enmtools.glm(cyreni, euro.worldclim, f = pres ~ bio1 + bio12, nback = 500)
 monticola.glm <- enmtools.glm(monticola, euro.worldclim, f = pres ~ bio1 + bio12, nback = 500)
 env.overlap(cyreni.glm, monticola.glm, euro.worldclim)
+}
 }
