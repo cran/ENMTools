@@ -1,6 +1,6 @@
-928001fbfcd6368c9cc68a69aed0f775 *DESCRIPTION
-a76e80cad9e06b67b64e96fbba453735 *NAMESPACE
-fa4a6b6b06e28cf927a482b1f574c87c *NEWS.md
+325010245b99d7e8a3bd6ba1d718ebac *DESCRIPTION
+01247c79e828d675d17f42e956bc0020 *NAMESPACE
+163e2713a839207b5a47c2c300530255 *NEWS.md
 59a74386891b1e1af7c60edb23d57263 *R/add.env.R
 a0578eb16489dbc92a11f98f9876f499 *R/background.points.buffer.R
 6e163bab0e5f8a21d2dbf5f6bbac6cdf *R/background.raster.buffer.R
@@ -63,7 +63,7 @@ ea5c01b7575c9b45471e731b264120e6 *R/sim.points.R
 c25d4cb99f2537587a485d10cb0f1587 *R/threespace.plot.R
 1829d29b4fc2af3a4a8b8f8600e501df *R/trimdupes.by.raster.R
 4e60e42c783f2aead42ee8cabfc390a6 *R/visualize.enm.R
-fd6715e0ca504dee68dc31e94bfc7795 *R/visualize.overlap.R
+eb742ba494a01026d20dbd6d7d151bf1 *R/visualize.overlap.R
 261f6869271b51117d98e14ce3a8c63b *R/zzz.R
 94fa19b4a06dec0c9e512e2eba7191a0 *data/datalist
 19244e5f006d6e88ba559c392e4d97ee *data/euro.worldclim.RData
@@ -132,7 +132,7 @@ d418a8cb6cb95a9136230b409f9d21e5 *man/species.from.file.Rd
 7258ee03e8bf702bba3a7c0add0cb736 *man/threespace.plot.Rd
 7b9098d952c55f9c1dd732e2598f581f *man/trimdupes.by.raster.Rd
 da244898828484a837dc2d9f498c13a9 *man/visualize.enm.Rd
-a5cd9bbe829d1d4d952b023991da5439 *man/visualize.overlap.Rd
+9dbe314a3a30d0fbccae85044d659556 *man/visualize.overlap.Rd
 c90304e28adc1932ff47397d74a98c57 *tests/testthat.R
 b82f84eefb5bc91600d166cc024916ff *tests/testthat/helper_make_species.R
 8dcf12d40f22006ab10791d037d7738f *tests/testthat/test_ENMTools.R
