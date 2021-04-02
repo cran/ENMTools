@@ -1,7 +1,8 @@
-325010245b99d7e8a3bd6ba1d718ebac *DESCRIPTION
-01247c79e828d675d17f42e956bc0020 *NAMESPACE
-163e2713a839207b5a47c2c300530255 *NEWS.md
+ff6a74950b6bbab24ad425baed1b3071 *DESCRIPTION
+63dc549633aa1b9aae8897d13ccc1fff *NAMESPACE
+dc58450a37d664c02b895fcc021dbaaa *NEWS.md
 59a74386891b1e1af7c60edb23d57263 *R/add.env.R
+07da1d6a8fdb769c03805f2066a10de1 *R/background.buffer.R
 a0578eb16489dbc92a11f98f9876f499 *R/background.points.buffer.R
 6e163bab0e5f8a21d2dbf5f6bbac6cdf *R/background.raster.buffer.R
 de1d83605867d1a84dd31b4612b0376b *R/background.shape.buffer.R
@@ -24,8 +25,7 @@ b0bad9275bdc031ca4dd8252a252ed1f *R/enmtools.dm.R
 a48b2dd1829219656c177ffb9277ea36 *R/enmtools.gam.R
 269bef2658fdeda0af4b638bf00dd700 *R/enmtools.glm.R
 07bc7a486a237c29060d25a4ca5c1c22 *R/enmtools.hypervolume.R
-17666b1aa88f3451da117048daa1ed14 *R/enmtools.maxent.R
-5b29321fd4a2482c2cc47ae6815677b7 *R/enmtools.ppmlasso.R
+de8112ece7992afa2757bf7639b07a48 *R/enmtools.maxent.R
 788943c3e00be98fb5a16ecdc22b544a *R/enmtools.rf.R
 8f570149cde89b5ac00d6afe346e0f2d *R/enmtools.rf.ranger.R
 2ff466a3e1822e3e9e11a2530006fede *R/enmtools.species.R
@@ -41,7 +41,7 @@ a7d7dbb2c9270ff04bbaa623fa08a9a7 *R/iberolacerta.clade.R
 00c3fc29e1fa602c48205163abe8d539 *R/interactive.plot.R
 7daf6cd05c77e2d4aa513db8dc9584a0 *R/interactive.plot.enmtools.model.R
 b42e13cd2ef2ef43edb0dfed31a95e0b *R/interactive.plot.enmtools.species.R
-1ef27a7c6664dc8fb472e1b6107e711f *R/marginal.plots.R
+4989a501d36ebbcd7a8ad82e35dd4cf1 *R/marginal.plots.R
 4eb7e489d0de043d2f738c1aef64d9a5 *R/moses.list.R
 7746d6cfc2191a4c98ab6ad6dd34af39 *R/multistack.pca.R
 995f23b078fccfcc685d7a7e6bf38cf2 *R/node.overlap.R
@@ -58,7 +58,7 @@ ae022f190b3a185a66f42a60fd7f131b *R/raster.cor.matrix.R
 f4f9e9fe0159039c06d501a69dc1f340 *R/raster.pca.R
 f80c158a386ebe845d3020ec11b8fe2d *R/raster.resid.R
 5272102fb09892956fd6512584b8d31d *R/raster.standardize.R
-ea5c01b7575c9b45471e731b264120e6 *R/sim.points.R
+890b0065c39e284f4fd43389b4ed60ff *R/sim.points.R
 1170e480b68e3437b9c9f276494f76d6 *R/species.from.file.R
 c25d4cb99f2537587a485d10cb0f1587 *R/threespace.plot.R
 1829d29b4fc2af3a4a8b8f8600e501df *R/trimdupes.by.raster.R
@@ -71,6 +71,7 @@ eb742ba494a01026d20dbd6d7d151bf1 *R/visualize.overlap.R
 00a533c48dd12ad7edfe187508408462 *inst/StarBEAST_MCC.species.txt
 7b7a287acaa2fe8adcd0e32ee599e5bf *inst/monticola.csv
 3d734ca56eb3fdbfb518fa711b99b148 *man/add.env.Rd
+e1f615de1e2f12ff2e4a0143290b3615 *man/background.buffer.Rd
 6c99fd5a27990c9b19c1c396184ac515 *man/background.points.buffer.Rd
 a16603177a4f210a5ddf3bf18587a7aa *man/background.raster.buffer.Rd
 b66520133fc18c8ac6e3308e086134c9 *man/background.shape.buffer.Rd
@@ -94,7 +95,6 @@ fdc121834deeffa17ea7b912c3a558de *man/enmtools.gam.Rd
 12d0bed02ea7ee79c838bd8fd21e7be6 *man/enmtools.glm.Rd
 bbc2b5cfd82442d1846ecd7fa775e751 *man/enmtools.hypervolume.Rd
 fa9769e0e5cc35d79da30f380f462c06 *man/enmtools.maxent.Rd
-f7ae067719d23d9a7f22c69a63abdf0c *man/enmtools.ppmlasso.Rd
 cfde05e6c0b325548338987b50857fa7 *man/enmtools.rf.Rd
 fc1205ea90ef71c96b641ebf262aaad6 *man/enmtools.rf.ranger.Rd
 18a2c7c37078d70bd49f4d2ea346dae8 *man/enmtools.species.Rd
@@ -111,7 +111,7 @@ a0c84a1a72376c859727cc8bfe888332 *man/identity.test.Rd
 aa7d57833c35ffab63f2fc0f9f14c088 *man/interactive.plot.Rd
 e3ab1ed57a6e95ae1054df0a560f3db7 *man/interactive.plot.enmtools.model.Rd
 d099234e64f4ca6f1e1767540533fe6a *man/interactive.plot.enmtools.species.Rd
-a4b93b96c66a21e43512e5fb9cf7d18e *man/marginal.plots.Rd
+de47f184ab6128a57f9db51cc4a9d190 *man/marginal.plots.Rd
 56510f741931aedfea47429c039f5478 *man/moses.list.Rd
 4de5cebf0a7932ca8a017e49219e1f5b *man/multistack.pca.Rd
 ce564296d3a7928e9a157446b84f882a *man/node.overlap.Rd
@@ -135,4 +135,4 @@ da244898828484a837dc2d9f498c13a9 *man/visualize.enm.Rd
 9dbe314a3a30d0fbccae85044d659556 *man/visualize.overlap.Rd
 c90304e28adc1932ff47397d74a98c57 *tests/testthat.R
 b82f84eefb5bc91600d166cc024916ff *tests/testthat/helper_make_species.R
-8dcf12d40f22006ab10791d037d7738f *tests/testthat/test_ENMTools.R
+cb6253e07a8134df7f5d3fce036f26ce *tests/testthat/test_ENMTools.R
