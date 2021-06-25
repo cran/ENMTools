@@ -1,8 +1,8 @@
 Package: ENMTools
 Type: Package
 Title: Analysis of Niche Evolution using Niche and Distribution Models
-Version: 1.0.4
-Date: 2021-05-07
+Version: 1.0.5
+Date: 2021-06-25
 Encoding: UTF-8
 Authors@R: c(person(given = "Dan", family = "Warren", role = c("aut", "cre"), email = "dan.l.warren@gmail.com", comment = c(ORCID = "0000-0002-8747-2451")),
             person(given = "Nick", family = "Matzke", role = "ctb", email = "nick.matzke@anu.edu.au"),
@@ -26,7 +26,7 @@ Suggests: testthat, hypervolume, leaflet, mgcv, ecospat, randomForest,
         ranger, caret, CalibratR, ape, ResourceSelection, fields,
         reshape2, vip, pdp, fastshap, viridis, progress
 NeedsCompilation: no
-Packaged: 2021-05-07 06:29:17 UTC; danwarren
+Packaged: 2021-06-25 10:14:34 UTC; danwarren
 Author: Dan Warren [aut, cre] (<https://orcid.org/0000-0002-8747-2451>),
   Nick Matzke [ctb],
   Marcel Cardillo [ctb],
@@ -37,4 +37,4 @@ Author: Dan Warren [aut, cre] (<https://orcid.org/0000-0002-8747-2451>),
   Teresa Iglesias [ctb],
   Russell Dinnage [aut] (<https://orcid.org/0000-0003-0846-2819>)
 Repository: CRAN
-Date/Publication: 2021-05-07 06:50:03 UTC
+Date/Publication: 2021-06-25 10:40:02 UTC

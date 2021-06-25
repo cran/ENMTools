@@ -1,12 +1,12 @@
-3b9454e4cd3a2a98a9a02f6096e0ad02 *DESCRIPTION
+c6f66611cd6692ba2efb7e38b95e3f21 *DESCRIPTION
 e67a42844f2e9a0cc2d3f828a1461884 *NAMESPACE
-228de8e7b0d80385090b971ae0e5539a *NEWS.md
+84ff6974cd8209ef8f61100937d0cb1f *NEWS.md
 59a74386891b1e1af7c60edb23d57263 *R/add.env.R
 07da1d6a8fdb769c03805f2066a10de1 *R/background.buffer.R
 2d88907966df471b3bdbdeab116f9e54 *R/background.points.buffer.R
 b06f21abfdc92b6252ee7cb8f7320ff9 *R/background.raster.buffer.R
 e14c1069502028186d075f437514e568 *R/background.shape.buffer.R
-994fdcf26ec1d835ba4305b0a442a6b7 *R/background.test.R
+379ff6bbbdd4948237c8b1c961211148 *R/background.test.R
 7491d68e2242a2f6bd6c52f8b7477209 *R/calc.B1.R
 47599f3a5cc3f6ee548ad483ac92182e *R/calc.B2.R
 26ca2ac828a054ce4923a0ccede6b29d *R/check.bg.R
@@ -30,7 +30,7 @@ d0cf9f9310bb1d448f0a14ce71b1af4d *R/enmtools.ecospat.id.R
 3122690b94d3bf22f812ff7864ce1a32 *R/enmtools.rf.R
 2a8fbc1786fdd8da621e6ccae73bcd3e *R/enmtools.rf.ranger.R
 2ff466a3e1822e3e9e11a2530006fede *R/enmtools.species.R
-3fe6066b3a73df70b0ebf1659d07b0d4 *R/enmtools.vip.R
+9d44573519e34a321f76051614062f4b *R/enmtools.vip.R
 1266c1bcf967842582c78ab8c947056d *R/env.breadth.R
 0a0a6fe7fbfd446c6911ab71d0e8a375 *R/env.evaluate.R
 5501c8d0e00622b6691f9a7ec2b2165c *R/env.overlap.R
@@ -40,9 +40,9 @@ d0cf9f9310bb1d448f0a14ce71b1af4d *R/enmtools.ecospat.id.R
 a7d7dbb2c9270ff04bbaa623fa08a9a7 *R/iberolacerta.clade.R
 13fb1f96f8f5f68b5eb7bc7d6ce582e2 *R/identity.test.R
 00c3fc29e1fa602c48205163abe8d539 *R/interactive.plot.R
-7daf6cd05c77e2d4aa513db8dc9584a0 *R/interactive.plot.enmtools.model.R
-b42e13cd2ef2ef43edb0dfed31a95e0b *R/interactive.plot.enmtools.species.R
-4989a501d36ebbcd7a8ad82e35dd4cf1 *R/marginal.plots.R
+9f52a0ba4ddaa5e19d1322207c35dcaf *R/interactive.plot.enmtools.model.R
+1f41e1cde6ebd430af475ef53b52bb20 *R/interactive.plot.enmtools.species.R
+d50e33d8f171ccab9157b60a55e477e4 *R/marginal.plots.R
 4eb7e489d0de043d2f738c1aef64d9a5 *R/moses.list.R
 ece95f6d7d6e8bcb15a8e725fdec135e *R/multistack.pca.R
 995f23b078fccfcc685d7a7e6bf38cf2 *R/node.overlap.R
@@ -100,7 +100,7 @@ a599464d96cf3ef8d8b0143b9c985497 *man/enmtools.maxent.Rd
 bfd20dac82c575e1b86b0c8f131b4804 *man/enmtools.rf.Rd
 d506ddfd582e810562ee2cdc5276aea8 *man/enmtools.rf.ranger.Rd
 18a2c7c37078d70bd49f4d2ea346dae8 *man/enmtools.species.Rd
-1f32fd394488ebb8653110d603f331ed *man/enmtools.vip.Rd
+479d3da0a91bf3cb5ccc78505a6e037d *man/enmtools.vip.Rd
 dda87f1ceba8e0e9b3feff62591c2476 *man/env.breadth.Rd
 35a0438bbb2f72a3bc3883be15f6233f *man/env.evaluate.Rd
 f49edc8ef5b2507e16988ddb3a76c225 *man/env.overlap.Rd
@@ -111,8 +111,8 @@ cb82e92026513a469f01e7de813579bf *man/iberolacerta.clade.Rd
 a0c84a1a72376c859727cc8bfe888332 *man/identity.test.Rd
 f6f8ee560ce5959c55a816e8acb58911 *man/install.extras.Rd
 aa7d57833c35ffab63f2fc0f9f14c088 *man/interactive.plot.Rd
-e3ab1ed57a6e95ae1054df0a560f3db7 *man/interactive.plot.enmtools.model.Rd
-d099234e64f4ca6f1e1767540533fe6a *man/interactive.plot.enmtools.species.Rd
+5185112fc80c7e5180bceb8352eaadd1 *man/interactive.plot.enmtools.model.Rd
+169ed68857f11685a77609a73a89f53a *man/interactive.plot.enmtools.species.Rd
 de47f184ab6128a57f9db51cc4a9d190 *man/marginal.plots.Rd
 56510f741931aedfea47429c039f5478 *man/moses.list.Rd
 c2965348188b6392673cecbe1cdfee1c *man/multistack.pca.Rd
