@@ -7,7 +7,6 @@
 #'
 #' @examples
 #' \donttest{
-#' data(iberolacerta.clade)
 #' if(requireNamespace("ape", quietly = TRUE)) {
 #'     new.clade <- drop.species(iberolacerta.clade, c("cyreni", "monticola"))
 #' }
@@ -16,7 +15,7 @@
 
 drop.species <- function(clade, species){
 
-  check.packages("ape")
+  assert.extras.this.fun()
 
   if(!inherits(clade, "enmtools.clade")){
     stop("Clade is not an enmtools.clade object!")

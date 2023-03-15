@@ -20,16 +20,16 @@ threespace.plot <- function(model, env, maxpts = NA){
   if(!inherits(model, "enmtools.model")){
     stop("The supplied model is not an enmtools.model object!")
   }
-  if(!inherits(env, c("raster", "RasterBrick", "RasterStack"))){
+  if(!inherits(env, c("raster", "RasterBrick", "SpatRaster"))){
     stop("The supplied environmental layers were not recognized as raster objects!")
   }
 
   if(inherits(model, "enmtools.maxent")){
-    model$analysis.df <- cbind(model$analysis.df, extract(env, model$analysis.df[,1:2]))
+    model$analysis.df <- cbind(model$analysis.df, terra::extract(env, model$analysis.df[,1:2], ID = FALSE))
   }
 
   if(inherits(model, c("enmtools.bc", "enmtools.dm"))){
-    model$analysis.df <- cbind(model$analysis.df, extract(env, model$analysis.df[,1:2]))
+    model$analysis.df <- cbind(model$analysis.df, terra::extract(env, model$analysis.df[,1:2], ID = FALSE))
     model$analysis.df$presence <- rep(1, nrow(model$analysis.df))
   }
 
@@ -51,7 +51,7 @@ threespace.plot <- function(model, env, maxpts = NA){
 
 
   # Extract data from env layers
-  allpoints <- as.data.frame(rasterToPoints(env))
+  allpoints <- as.data.frame(rasterToPoints2(env))
   allpoints$presence <- rep(2, nrow(allpoints))
   allpoints <- allpoints[,-c(1,2)]
   if(!is.na(maxpts)){

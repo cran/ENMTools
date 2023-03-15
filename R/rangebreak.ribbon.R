@@ -4,7 +4,7 @@
 #' @param species.1 An emtools.species object
 #' @param species.2 An enmtools.species object
 #' @param ribbon An enmtools.species object representing the region of marginal habtiat in the overlap between the species' ranges
-#' @param env A RasterLayer or RasterStack object containing environmental data
+#' @param env A SpatRaster object containing environmental data
 #' @param type The type of model to construct, currently accepts "glm", "mx", "bc", or "dm"
 #' @param f A function to use for model fitting.  Only required for GLM models at the moment.
 #' @param width Width of the ribbon, in the same units as the occurrence points (e.g, decimal degrees)
@@ -23,14 +23,13 @@
 #'
 #' @examples
 #' \donttest{
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' cyreni <- iberolacerta.clade$species$cyreni
 #' aranica <- iberolacerta.clade$species$aranica
 #'
 #' # We're just going to fudge together occurrence data from a ribbon here
 #' # from random points between the two species' ranges
-#' p <- data.frame(Longitude = runif(50, -4, -2), Latitude = runif(50, 40, 43))
+#' p <- data.frame(x = runif(50, -4, -2), y = runif(50, 40, 43))
+#' p <- terra::vect(p, geom = c("x", "y"), crs = terra::crs(cyreni$presence.points))
 #' bg <- background.buffer(p, 100000, mask = euro.worldclim[[1]], n = 100, return.type = "points")
 #' ribbon <- enmtools.species(species.name = "ribbon", presence.points = p, background.points = bg)
 #'
@@ -89,7 +88,7 @@ rangebreak.ribbon <- function(species.1, species.2, ribbon, env, type, f = NULL,
   # and setting replicate clmaping to FALSE
   if(clamp == TRUE){
     # Adding env (skipped for BC otherwise)
-    this.df <- as.data.frame(extract(env, combined.presence.points))
+    this.df <- as.data.frame(terra::extract(env, combined.presence.points, ID = FALSE))
 
     env <- clamp.env(this.df, env)
   }
@@ -190,7 +189,7 @@ rangebreak.ribbon <- function(species.1, species.2, ribbon, env, type, f = NULL,
     }
 
     # How far is each point from the line if intercept is set to zero
-    part.points <- cbind(combined.presence.points, combined.presence.points[,2] - slope * combined.presence.points[,1])
+    part.points <- cbind(terra::crds(combined.presence.points), terra::crds(combined.presence.points)[,2] - slope * terra::crds(combined.presence.points)[,1])
 
     # Flip a coin to decide whether we're going from top to bottom or other way around
     if(rbinom(1,1,0.5) == 0){
@@ -207,14 +206,18 @@ rangebreak.ribbon <- function(species.1, species.2, ribbon, env, type, f = NULL,
 
     # Grab ribbon points, pull them out of part.points
     ribbon.points <- which(part.points[,3] > (intercept - intercept.modifier) & part.points[,3] < (intercept + intercept.modifier))
-    rep.ribbon$presence.points <- part.points[ribbon.points,1:2]
+    rep.ribbon$presence.points <- terra::vect(part.points[ribbon.points,1:2],
+                                              crs = terra::crs(species.1$presence.points))
 
     # Putting all remaining points in rep.outside
-    rep.outside$presence.points <- part.points[-ribbon.points,1:2]
+    rep.outside$presence.points <- terra::vect(part.points[-ribbon.points,1:2],
+                                               crs = terra::crs(species.1$presence.points))
 
     # Splitting remaining points in proportion to the relative sample sizes of the empirical data
-    rep.species.1$presence.points <- part.points[1:nrow(species.1$presence.points), 1:2]
-    rep.species.2$presence.points <- part.points[(nrow(part.points) - nrow(species.2$presence.points)):nrow(part.points), 1:2]
+    rep.species.1$presence.points <- terra::vect(part.points[1:nrow(species.1$presence.points), 1:2],
+                                                 crs = terra::crs(species.1$presence.points))
+    rep.species.2$presence.points <- terra::vect(part.points[(nrow(part.points) - nrow(species.2$presence.points)):nrow(part.points), 1:2],
+                                                 crs = terra::crs(species.1$presence.points))
 
 
     # Make sure we actually got some ribbon points.  If not, fail this round and try again.
@@ -337,157 +340,163 @@ rangebreak.ribbon <- function(species.1, species.2, ribbon, env, type, f = NULL,
   p.values.sp2.vs.ribbon <- apply(reps.overlap.sp2.vs.ribbon, 2, function(x) min(rank(x)[1], rank(-x)[1])/length(x))
   p.values.outside.vs.ribbon <- apply(reps.overlap.outside.vs.ribbon, 2, function(x) min(rank(x)[1], rank(-x)[1])/length(x))
 
+  reps.overlap.sp1.vs.sp2 <- as.data.frame(reps.overlap.sp1.vs.sp2)
+  reps.overlap.sp1.vs.ribbon <- as.data.frame(reps.overlap.sp1.vs.ribbon)
+  reps.overlap.sp2.vs.ribbon <- as.data.frame(reps.overlap.sp2.vs.ribbon)
+  reps.overlap.outside.vs.ribbon <- as.data.frame(reps.overlap.outside.vs.ribbon)
 
   ### Plots for sp1 vs sp2
-  d.plot.sp1.vs.sp2 <- qplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),"D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  d.plot.sp1.vs.sp2 <- ggplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),], aes(x = .data$D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.sp2[1,"D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  i.plot.sp1.vs.sp2 <- qplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),"I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  i.plot.sp1.vs.sp2 <- ggplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),], aes(x = .data$I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.sp2[1,"I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  cor.plot.sp1.vs.sp2 <- qplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),"rank.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  cor.plot.sp1.vs.sp2 <- ggplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),], aes(x = .data$rank.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.sp2[1,"rank.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.d.plot.sp1.vs.sp2 <- qplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),"env.D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.d.plot.sp1.vs.sp2 <- ggplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),], aes(x = .data$env.D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.sp2[1,"env.D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.i.plot.sp1.vs.sp2 <- qplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),"env.I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.i.plot.sp1.vs.sp2 <- ggplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),], aes(x = .data$env.I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.sp2[1,"env.I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.cor.plot.sp1.vs.sp2 <- qplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),"env.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.cor.plot.sp1.vs.sp2 <- ggplot(reps.overlap.sp1.vs.sp2[2:nrow(reps.overlap.sp1.vs.sp2),], aes(x = .data$env.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.sp2[1,"env.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
+
+
 
 
   ### Plots for sp1 vs ribbon
-  d.plot.sp1.vs.ribbon <- qplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),"D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  d.plot.sp1.vs.ribbon <- ggplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),], aes(x = .data$D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.ribbon[1,"D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  i.plot.sp1.vs.ribbon <- qplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),"I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  i.plot.sp1.vs.ribbon <- ggplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),], aes(x = .data$I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.ribbon[1,"I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  cor.plot.sp1.vs.ribbon <- qplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),"rank.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  cor.plot.sp1.vs.ribbon <- ggplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),], aes(x = .data$rank.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.ribbon[1,"rank.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs. ribbon")) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.d.plot.sp1.vs.ribbon <- qplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),"env.D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.d.plot.sp1.vs.ribbon <- ggplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),], aes(x = .data$env.D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.ribbon[1,"env.D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.i.plot.sp1.vs.ribbon <- qplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),"env.I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.i.plot.sp1.vs.ribbon <- ggplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),], aes(x = .data$env.I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.ribbon[1,"env.I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.cor.plot.sp1.vs.ribbon <- qplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),"env.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.cor.plot.sp1.vs.ribbon <- ggplot(reps.overlap.sp1.vs.ribbon[2:nrow(reps.overlap.sp1.vs.ribbon),], aes(x = .data$env.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp1.vs.ribbon[1,"env.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs. ribbon")) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
 
 
   ### Plots for sp2 vs ribbon
-  d.plot.sp2.vs.ribbon <- qplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),"D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  d.plot.sp2.vs.ribbon <- ggplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),], aes(x = .data$D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp2.vs.ribbon[1,"D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D") +
-    ggtitle(paste("Rangebreak test:\n", species.2$species.name, "vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  i.plot.sp2.vs.ribbon <- qplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),"I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  i.plot.sp2.vs.ribbon <- ggplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),], aes(x = .data$I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp2.vs.ribbon[1,"I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I") +
-    ggtitle(paste("Rangebreak test:\n", species.2$species.name, "vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  cor.plot.sp2.vs.ribbon <- qplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),"rank.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  cor.plot.sp2.vs.ribbon <- ggplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),], aes(x = .data$rank.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp2.vs.ribbon[1,"rank.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation") +
-    ggtitle(paste("Rangebreak test:\n", species.2$species.name, "vs. ribbon")) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.d.plot.sp2.vs.ribbon <- qplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),"env.D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.d.plot.sp2.vs.ribbon <- ggplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),], aes(x = .data$env.D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp2.vs.ribbon[1,"env.D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.2$species.name, "vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.i.plot.sp2.vs.ribbon <- qplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),"env.I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.i.plot.sp2.vs.ribbon <- ggplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),], aes(x = .data$env.I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp2.vs.ribbon[1,"env.I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.2$species.name, "vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.cor.plot.sp2.vs.ribbon <- qplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),"env.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.cor.plot.sp2.vs.ribbon <- ggplot(reps.overlap.sp2.vs.ribbon[2:nrow(reps.overlap.sp2.vs.ribbon),], aes(x = .data$env.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.sp2.vs.ribbon[1,"env.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.2$species.name, "vs. ribbon")) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
 
   ### Plots for outside vs ribbon
-  d.plot.outside.vs.ribbon <- qplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),"D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  d.plot.outside.vs.ribbon <- ggplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),], aes(x = .data$D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.outside.vs.ribbon[1,"D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D") +
-    ggtitle(paste("Rangebreak test:\n outside vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  i.plot.outside.vs.ribbon <- qplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),"I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  i.plot.outside.vs.ribbon <- ggplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),], aes(x = .data$I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.outside.vs.ribbon[1,"I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I") +
-    ggtitle(paste("Rangebreak test:\n outside vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  cor.plot.outside.vs.ribbon <- qplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),"rank.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  cor.plot.outside.vs.ribbon <- ggplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),], aes(x = .data$rank.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.outside.vs.ribbon[1,"rank.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation") +
-    ggtitle(paste("Rangebreak test:\n outside vs. ribbon")) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.d.plot.outside.vs.ribbon <- qplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),"env.D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.d.plot.outside.vs.ribbon <- ggplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),], aes(x = .data$env.D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.outside.vs.ribbon[1,"env.D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n outside vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.i.plot.outside.vs.ribbon <- qplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),"env.I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.i.plot.outside.vs.ribbon <- ggplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),], aes(x = .data$env.I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.outside.vs.ribbon[1,"env.I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n outside vs. ribbon")) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.cor.plot.outside.vs.ribbon <- qplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),"env.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.cor.plot.outside.vs.ribbon <- ggplot(reps.overlap.outside.vs.ribbon[2:nrow(reps.overlap.outside.vs.ribbon),], aes(x = .data$env.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap.outside.vs.ribbon[1,"env.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n outside vs. ribbon")) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation, Environment Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
 
@@ -551,8 +560,8 @@ rangebreak.ribbon.precheck <- function(species.1, species.2, ribbon, env, type, 
     stop("Ribbon is not an enmtools.species object!")
   }
 
-  if(!inherits(env, c("raster", "RasterLayer", "RasterStack", "RasterBrick"))){
-    stop("Environmental layers are not a RasterLayer or RasterStack object!")
+  if(!inherits(env, c("SpatRaster"))){
+    stop("Environmental layers are not a SpatRaster object!")
   }
 
   if(type == "glm"){
@@ -577,32 +586,32 @@ rangebreak.ribbon.precheck <- function(species.1, species.2, ribbon, env, type, 
 
   check.species(species.1)
 
-  if(!inherits(species.1$presence.points, "data.frame")){
-    stop("Species 1 presence.points do not appear to be an object of class data.frame")
+  if(!inherits(species.1$presence.points, "SpatVector")){
+    stop("Species 1 presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(species.1$background.points, "data.frame")){
-    stop("Species 1 background.points do not appear to be an object of class data.frame")
+  if(!inherits(species.1$background.points, "SpatVector")){
+    stop("Species 1 background.points do not appear to be an object of class SpatVector")
   }
 
   check.species(species.2)
 
-  if(!inherits(species.2$presence.points, "data.frame")){
-    stop("Species 2 presence.points do not appear to be an object of class data.frame")
+  if(!inherits(species.2$presence.points, "SpatVector")){
+    stop("Species 2 presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(species.2$background.points, "data.frame")){
-    stop("Species 2 background.points do not appear to be an object of class data.frame")
+  if(!inherits(species.2$background.points, "SpatVector")){
+    stop("Species 2 background.points do not appear to be an object of class SpatVector")
   }
 
   check.species(ribbon)
 
-  if(!inherits(ribbon$presence.points, "data.frame")){
-    stop("Species 1 presence.points do not appear to be an object of class data.frame")
+  if(!inherits(ribbon$presence.points, "SpatVector")){
+    stop("Species 1 presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(ribbon$background.points, "data.frame")){
-    stop("Species 1 background.points do not appear to be an object of class data.frame")
+  if(!inherits(ribbon$background.points, "SpatVector")){
+    stop("Species 1 background.points do not appear to be an object of class SpatVector")
   }
 
 

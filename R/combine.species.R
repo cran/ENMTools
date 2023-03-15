@@ -5,7 +5,6 @@
 #' @return An enmtools.species object with the occurrence data, names, and range rasters for the species list combined into one.
 #'
 #' @examples
-#' data(iberolacerta.clade)
 #' combine.species(iberolacerta.clade$species)
 
 
@@ -23,8 +22,10 @@ combine.species <- function(species.list){
       combined$background.points <- rbind(combined$background.points, species.list[[i]][["background.points"]])
     }
 
-    if(inherits(combined$range, "RasterLayer") & inherits(species.list[[i]]$range, "RasterLayer")){
-      combined$range <-  raster::merge(combined$range, species.list[[i]][["range"]])
+    if(!inherits(combined$range, "Raster") | !inherits(species.list[[i]]$range, "Raster")){
+      combined$range <- NA
+    } else if(inherits(combined$range, "RasterLayer") & inherits(species.list[[i]]$range, "RasterLayer")){
+      combined$range <-  terra::merge(combined$range, species.list[[i]][["range"]])
     } else if(is.data.frame(combined$range) & is.data.frame(species.list[[i]]$range)){
       combined$range <- species.list[[i]]$range
     } else {

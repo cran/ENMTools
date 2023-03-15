@@ -2,7 +2,7 @@
 #'
 #' @param species An enmtools.species object
 #' @param model An enmtools.model object or a model that can be projected using the predict() function of dismo
-#' @param env A raster or raster stack of environmental data.
+#' @param env A SpatRaster of environmental data.
 #' @param bg.source Determines whether minima and maxima of the environment space should be picked using the environment layers or the background points.
 #' @param n.background The number of background points to sample from the environment space.
 #' @param test.eval When set to "true", env.evaluate evaluates the test data stored in the model object instead of the training data.
@@ -13,8 +13,6 @@
 #'
 #' @examples
 #' \donttest{
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' cyreni <- iberolacerta.clade$species$cyreni
 #' cyreni.glm <- enmtools.glm(cyreni, euro.worldclim, test.prop = 0.2,
 #' f = pres ~ bio1 + bio12, nback = 500)
@@ -39,8 +37,8 @@ env.evaluate <- function(species, model, env, bg.source = "background", n.backgr
     stop("Argument species must supply an enmtools.species object!")
   }
 
-  presence <- species$presence.points[,1:2]
-  background <- species$background.points[,1:2]
+  presence <- species$presence.points
+  background <- species$background.points
 
   if(inherits(model, "enmtools.model")){
     model <- model$model
@@ -48,14 +46,15 @@ env.evaluate <- function(species, model, env, bg.source = "background", n.backgr
 
   if(bg.source == "background"){
     allpoints <- rbind(presence, background)
-    values <- extract(env, allpoints)
+    values <- terra::extract(env, allpoints, ID = FALSE)
     maxes <- apply(values, 2, function(x) max(x, na.rm = TRUE))
     mins <- apply(values, 2, function(x) min(x, na.rm = TRUE))
   }
 
   if(bg.source == "env") {
-    maxes <- maxValue(env)
-    mins <- minValue(env)
+    minmax <- terra::minmax(env)
+    maxes <- minmax[1, ]
+    mins <- minmax[2, ]
   }
 
 
@@ -64,7 +63,8 @@ env.evaluate <- function(species, model, env, bg.source = "background", n.backgr
   bg.table <- t(t(this.lhs) * (maxes  - mins) + mins)
   colnames(bg.table) <- names(env)
 
-  p.table <- extract(env, presence)
+  p.table <- terra::extract(env, presence, ID = FALSE)
+  p.table <- p.table[complete.cases(p.table), ]
 
   # Having to do this for now because the dismo models don't like "newdata"
   # Unfortunately I think we finally have to use an if statement because ranger predict is really different
@@ -79,7 +79,7 @@ env.evaluate <- function(species, model, env, bg.source = "background", n.backgr
 
 
 
-  env.evaluation <-dismo::evaluate(pred.p, pred.bg)
+  env.evaluation <- dismo::evaluate(pred.p, pred.bg)
 
   return(env.evaluation)
 }

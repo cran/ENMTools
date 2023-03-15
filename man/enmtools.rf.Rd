@@ -26,7 +26,7 @@ enmtools.rf(
 \arguments{
 \item{species}{An enmtools.species object}
 
-\item{env}{A raster or raster stack of environmental data.}
+\item{env}{A SpatRaster of environmental data.}
 
 \item{f}{A formula for fitting the model}
 
@@ -64,8 +64,6 @@ Takes an emtools.species object with presence and background points, and builds 
 }
 \examples{
 \donttest{
-data(euro.worldclim)
-data(iberolacerta.clade)
 enmtools.rf(iberolacerta.clade$species$monticola, env = euro.worldclim, nback = 500)
 }
 }

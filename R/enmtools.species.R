@@ -16,29 +16,30 @@ enmtools.species <- function(range = NA, presence.points = NA, background.points
                              species.name = NA, models=NA){
 
   # Checking classes of input args.  The isTRUE stuff is needed because R doesn't
-  # know how to do is.na on raster data, so it was barfing and error when a raster
+  # know how to do is.na on raster data, so it was barfing an error when a raster
   # was passed in.
 
-  if(!isTRUE(is.na(range))){
-    if(!any(c("raster", "RasterLayer", "SpatialPolygons") %in% class(range))){
-      stop("Argument range requires an object of class raster or SpatialPolygons")
+  if(!inherits(range, "SpatRaster")){
+    if(!is.na(range)){
+      stop("Argument range requires an object of class SpatRaster")
     }
   }
 
-  if(!isTRUE(is.na(presence.points))){
-    if(!any(c("data.frame") %in% class(presence.points))){
-      stop("Argument presence.points requires an object of class data.frame")
+
+  if(!inherits(presence.points, "SpatVector")){
+    if(!is.na(presence.points)){
+      stop("Argument presence.points requires an object of class SpatVector")
     }
   }
 
-  if(!isTRUE(is.na(background.points))){
-    if(!any("data.frame" %in% class(background.points))){
-      stop("Argument background.points requires an object of class data.frame")
+  if(!inherits(background.points, "SpatVector")){
+    if(!is.na(background.points)){
+      stop("Argument background.points requires an object of class SpatVector")
     }
   }
 
-  if(!isTRUE(is.na(species.name))){
-    if(!any("character" %in% class(species.name))){
+  if(!inherits(species.name, "character")){
+    if(!is.na(species.name)){
       stop("Argument species.name requires an object of class character")
     }
   }
@@ -59,23 +60,23 @@ enmtools.species <- function(range = NA, presence.points = NA, background.points
 summary.enmtools.species <- function(object, ...){
   stopifnot(inherits(object, "enmtools.species"))
 
-  if(inherits(object$range,  "RasterLayer")){
+  if(inherits(object$range, "SpatRaster")){
     cat("\n\nRange raster: \n")
     print(object$range)
   } else {
     cat("\n\nRange raster not defined.")
   }
 
-  if(class(object$presence.points) %in% c("data.frame", "matrix")){
+  if(inherits(object$presence.points,"SpatVector")){
     cat("\n\nPresence points (first ten only): ")
-    print(knitr::kable(head(object$presence.points, 10)))
+    print(knitr::kable(head(terra::crds(object$presence.points), 10)))
   } else{
     cat("\n\nPresence points not defined.")
   }
 
-  if(class(object$background.points)  %in% c("data.frame", "matrix")){
+  if(inherits(object$background.points, "SpatVector")){
     cat("\n\nBackground points (first ten only): ")
-    print(knitr::kable(head(object$background.points, 10)))
+    print(knitr::kable(head(terra::crds(object$background.points, 10))))
   } else{
     cat("\n\nBackground points not defined.")
   }
@@ -100,16 +101,16 @@ summary.enmtools.species <- function(object, ...){
 plot.enmtools.species <- function(x, ...){
   stopifnot(inherits(x, "enmtools.species"))
 
-  if(inherits(x$range, "RasterLayer")){
-    raster::plot(x$range)
+  if(inherits(x$range, "SpatRaster")){
+    terra::plot(x$range, col = "orange")
   }
 
-  if(class(x$background.points)  %in% c("data.frame", "matrix")){
-    points(x$background.points[,1:2], pch = 4, col = "red")
+  if(inherits(x$background.points, "SpatVector")){
+    points(terra::crds(x$background.points)[,1:2], pch = 4, col = "red")
   }
 
-  if(class(x$presence.points) %in% c("data.frame", "matrix")){
-    points(x$presence.points[,1:2], pch = 16, col = "black")
+  if(inherits(x$presence.points,"SpatVector")){
+    points(terra::crds(x$presence.points)[,1:2], pch = 16, col = "black")
   }
 
   if(inherits(x$species.name, "character")){
@@ -122,5 +123,22 @@ print.enmtools.species <- function(x, ...){
 
   summary(x)
 
+}
+
+#' @describeIn enmtools.species Save an ENMTools species object
+#' @param x An enmtools.species object to be saved
+#' @param ... Other arguments passed to R's save function (eg., filename)
+save.enmtools.species <- function(x, ...){
+  x <- rapply(x, terra::wrap, classes = c("SpatVector", "SpatRaster"), how = "replace")
+  save(x, ...)
+}
+
+#' @describeIn enmtools.species Load an ENMTools species object
+#' @param x Path to an enmtools.species file
+#' @param ... Other arguments passed to R's load function
+load.enmtools.species <- function(x, ...) {
+  load(x, ...)
+  x <- rapply(x, terra::unwrap, classes = c("PackedSpatVector", "PackedSpatRaster"), how = "replace")
+  return(x)
 }
 

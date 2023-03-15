@@ -25,7 +25,7 @@ rangebreak.linear(
 
 \item{species.2}{An enmtools.species object}
 
-\item{env}{A RasterLayer or RasterStack object containing environmental data}
+\item{env}{A SpatRaster object containing environmental data}
 
 \item{type}{The type of model to construct, currently accepts "glm", "mx", "bc", "gam", or "dm"}
 
@@ -55,8 +55,6 @@ rangebreak.linear Conduct a linear rangebreak test as described in Glor and Warr
 }
 \examples{
 \donttest{
-data(iberolacerta.clade)
-data(euro.worldclim)
 cyreni <- iberolacerta.clade$species$cyreni
 aranica <- iberolacerta.clade$species$aranica
 rangebreak.linear(cyreni, aranica, env = euro.worldclim, type = "glm",

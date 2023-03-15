@@ -7,31 +7,25 @@
 #'
 #' @examples
 #' \donttest{
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' cyreni <- iberolacerta.clade$species$cyreni
 #' monticola <- iberolacerta.clade$species$monticola
-#' if(requireNamespace("fields", quietly = TRUE)) {
-#'     point.overlap(cyreni, monticola)
-#' }
+#' point.overlap(cyreni, monticola)
 #' }
 
 point.overlap <- function(x, y){
 
-  check.packages("fields")
-
-  if(!inherits(x$presence.points, c("data.frame"))){
+  if(!inherits(x$presence.points, c("SpatVector"))){
     stop(paste("Species", x$species.name, "does not have presence points!"))
   }
 
-  if(!inherits(y$presence.points, c("data.frame"))){
+  if(!inherits(y$presence.points, c("SpatVector"))){
     stop(paste("Species", y$species.name, "does not have presence points!"))
   }
 
   # Get distance matrices for within and between species
-  within1 <- fields::rdist(x$presence.points, x$presence.points)
-  within2 <- fields::rdist(y$presence.points, y$presence.points)
-  between <- fields::rdist(x$presence.points, y$presence.points)
+  within1 <- terra::distance(x$presence.points, x$presence.points)
+  within2 <- terra::distance(y$presence.points, y$presence.points)
+  between <- terra::distance(x$presence.points, y$presence.points)
 
   # Init some empty score arrays for each species
   score1 <- rep(NA,nrow(within1))

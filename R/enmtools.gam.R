@@ -2,7 +2,7 @@
 #'
 #' @param species An enmtools.species object
 #' @param f Standard gam formula
-#' @param env A raster or raster stack of environmental data.
+#' @param env A SpatRaster of environmental data.
 #' @param test.prop Proportion of data to withhold randomly for model evaluation, or "block" for spatially structured evaluation.
 #' @param k Dimension of the basis used to represent the smooth term.  See documentation for s() for details.
 #' @param nback Number of background points to draw from range or env, if background points aren't provided
@@ -24,8 +24,6 @@
 #'
 #' @examples
 #' \donttest{
-#' data(euro.worldclim)
-#' data(iberolacerta.clade)
 #' if(requireNamespace("mgcv", quietly = TRUE)) {
 #'     enmtools.gam(iberolacerta.clade$species$monticola, env = euro.worldclim, f = pres ~ bio1 + bio9)
 #' }
@@ -35,9 +33,11 @@
 
 enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1000, env.nback = 10000, report = NULL, overwrite = FALSE, rts.reps = 0, weights = "equal", gam.method = "REML", gam.select = TRUE, bg.source = "default",  verbose = FALSE, clamp = TRUE, corner = NA, bias = NA, ...){
 
-  check.packages("mgcv")
+  assert.extras.this.fun()
 
   notes <- NULL
+
+  env <- check.raster(env, "env")
 
   species <- check.bg(species, env, nback = nback, bg.source = bg.source, verbose = verbose, bias = bias)
 
@@ -75,7 +75,7 @@ enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1
       } else if(corner < 1 | corner > 4){
         stop("corner should be an integer from 1 to 4!")
       }
-      test.inds <- get.block(species$presence.points, species$background.points)
+      test.inds <- get.block(terra::crds(species$presence.points), terra::crds(species$background.points))
       test.bg.inds <- which(test.inds$bg.grp == corner)
       test.inds <- which(test.inds$occs.grp == corner)
       test.data <- species$presence.points[test.inds,]
@@ -92,8 +92,7 @@ enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1
   # regardless of what was passed.
   f <- reformulate(attr(delete.response(terms(f)), "term.labels"), response = "presence")
 
-  analysis.df <- rbind(species$presence.points, species$background.points)
-  analysis.df$presence <- c(rep(1, nrow(species$presence.points)), rep(0, nrow(species$background.points)))
+  analysis.df <- make_analysis.df(species)
 
   if(weights == "equal"){
     weights <- c(rep(1, nrow(species$presence.points)),
@@ -105,13 +104,13 @@ enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1
 
   this.gam <- mgcv::gam(f, analysis.df[,-c(1,2)], family="binomial", weights = weights, method = gam.method, select = gam.select, ...)
 
-  suitability <- predict(env, this.gam, type = "response")
+  suitability <- terra::predict(env, this.gam, type = "response", na.rm = TRUE)
 
   # Clamping and getting a diff layer
   clamping.strength <- NA
   if(clamp == TRUE){
     env <- clamp.env(analysis.df, env)
-    clamped.suitability <- predict(env, this.gam, type = "response")
+    clamped.suitability <- terra::predict(env, this.gam, type = "response", na.rm = TRUE)
     clamping.strength <- clamped.suitability - suitability
     suitability <- clamped.suitability
   }
@@ -120,23 +119,23 @@ enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1
   # fails if the stack only has one layer.
   if(length(names(env)) == 1){
     oldname <- names(env)
-    env <- stack(env, env)
+    env <- c(env, env)
     names(env) <- c(oldname, "dummyvar")
     notes <- c(notes, "Only one predictor was provided, so a dummy variable was created in order to be compatible with dismo's prediction function.")
   }
 
-  model.evaluation <- dismo::evaluate(species$presence.points[,1:2], species$background.points[,1:2],
-                               this.gam, env)
+  model.evaluation <- dismo::evaluate(species$presence.points, species$background.points,
+                               this.gam, env, na.rm = TRUE)
   env.model.evaluation <- env.evaluate(species, this.gam, env, n.background = env.nback)
 
 
   # Test eval for randomly withheld data
   if(is.numeric(test.prop)){
     if(test.prop > 0 & test.prop < 1){
-      test.check <- raster::extract(env, test.data)
+      test.check <- terra::extract(env, test.data, ID = FALSE)
       test.data <- test.data[complete.cases(test.check),]
-      test.evaluation <-dismo::evaluate(test.data, species$background.points[,1:2],
-                                        this.gam, env)
+      test.evaluation <-dismo::evaluate(test.data, species$background.points,
+                                        this.gam, env, na.rm = TRUE)
       temp.sp <- species
       temp.sp$presence.points <- test.data
       env.test.evaluation <- env.evaluate(temp.sp, this.gam, env, n.background = env.nback)
@@ -146,10 +145,10 @@ enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1
   # Test eval for spatially structured data
   if(is.character(test.prop)){
     if(test.prop == "block"){
-      test.check <- raster::extract(env, test.data)
+      test.check <- terra::extract(env, test.data, ID = FALSE)
       test.data <- test.data[complete.cases(test.check),]
       test.evaluation <-dismo::evaluate(test.data, test.bg,
-                                        this.gam, env)
+                                        this.gam, env, na.rm = TRUE)
       temp.sp <- species
       temp.sp$presence.points <- test.data
       temp.sp$background.points <- test.bg
@@ -192,11 +191,18 @@ enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1
       rep.species <- species
 
       # Mix the points all together
-      allpoints <- rbind(test.data, species$background.points[,1:2], species$presence.points[,1:2])
+      if(test.prop > 0) {
+          test <- as.data.frame(test.data, geom = "XY")[ , c("x", "y")]
+        } else {
+          test <- NULL
+        }
+        allpoints <- rbind(test,
+                           as.data.frame(species$background.points, geom = "XY")[ , c("x", "y")],
+                           as.data.frame(species$presence.points, geom = "XY")[ , c("x", "y")])
 
       # Sample presence points from pool and remove from pool
       rep.rows <- sample(nrow(allpoints), nrow(species$presence.points))
-      rep.species$presence.points <- allpoints[rep.rows,]
+      rep.species$presence.points <- terra::vect(allpoints[rep.rows,], geom=c("x", "y"), crs = terra::crs(species$presence.points))
       allpoints <- allpoints[-rep.rows,]
 
       # Do the same for test points
@@ -207,38 +213,43 @@ enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1
       }
 
       # Everything else goes back to the background
-      rep.species$background.points <- allpoints
+      rep.species$background.points <- terra::vect(allpoints, geom=c("x", "y"), crs = terra::crs(species$presence.points))
 
       rep.species <- add.env(rep.species, env, verbose = verbose)
 
-      rts.df <- rbind(rep.species$presence.points, rep.species$background.points)
-      rts.df$presence <- c(rep(1, nrow(rep.species$presence.points)), rep(0, nrow(rep.species$background.points)))
+      rts.df <- make_analysis.df(rep.species)
 
       thisrep.gam <- mgcv::gam(f, rts.df[,-c(1,2)], family="binomial", ...)
 
-      thisrep.model.evaluation <-dismo::evaluate(rep.species$presence.points[,1:2], species$background.points[,1:2],
-                                                 thisrep.gam, env)
+      thisrep.model.evaluation <-dismo::evaluate(rep.species$presence.points, species$background.points,
+                                                 thisrep.gam, env, na.rm = TRUE)
       thisrep.env.model.evaluation <- env.evaluate(rep.species, thisrep.gam, env, n.background = env.nback)
 
       rts.geog.training[i] <- thisrep.model.evaluation@auc
       rts.env.training[i] <- thisrep.env.model.evaluation@auc
 
       if(test.prop > 0 & test.prop < 1){
-        thisrep.test.evaluation <-dismo::evaluate(rep.test.data, rep.species$background.points[,1:2],
-                                                  thisrep.gam, env)
+        thisrep.test.evaluation <-dismo::evaluate(rep.test.data, rep.species$background.points,
+                                                  thisrep.gam, env, na.rm = TRUE)
         temp.sp <- rep.species
-        temp.sp$presence.points <- rep.test.data
+        temp.sp$presence.points <- terra::vect(rep.test.data, geom=c("x", "y"), crs = terra::crs(species$presence.points))
         thisrep.env.test.evaluation <- env.evaluate(temp.sp, thisrep.gam, env, n.background = env.nback)
 
         rts.geog.test[i] <- thisrep.test.evaluation@auc
         rts.env.test[i] <- thisrep.env.test.evaluation@auc
-      }
 
-      rts.models[[paste0("rep.",i)]] <- list(model = thisrep.gam,
-                                             training.evaluation = thisrep.model.evaluation,
-                                             env.training.evaluation = thisrep.env.model.evaluation,
-                                             test.evaluation = thisrep.test.evaluation,
-                                             env.test.evaluation = thisrep.env.test.evaluation)
+        rts.models[[paste0("rep.",i)]] <- list(model = thisrep.gam,
+                                               training.evaluation = thisrep.model.evaluation,
+                                               env.training.evaluation = thisrep.env.model.evaluation,
+                                               test.evaluation = thisrep.test.evaluation,
+                                               env.test.evaluation = thisrep.env.test.evaluation)
+      } else {
+        rts.models[[paste0("rep.",i)]] <- list(model = thisrep.gam,
+                                               training.evaluation = thisrep.model.evaluation,
+                                               env.training.evaluation = thisrep.env.model.evaluation,
+                                               test.evaluation = NA,
+                                               env.test.evaluation = NA)
+      }
     }
 
     # Reps are all run now, time to package it all up
@@ -254,31 +265,40 @@ enmtools.gam <- function(species, env, f = NULL, test.prop = 0, k = 4, nback = 1
       rts.env.test.pvalue <- NA
     }
 
+    rts.geog.training <- data.frame(AUC = rts.geog.training)
+    rts.env.training <- data.frame(AUC = rts.env.training)
+    rts.geog.test <- data.frame(AUC = rts.geog.test)
+    rts.env.test <- data.frame(AUC = rts.env.test)
+
     # Making plots
-    training.plot <- qplot(rts.geog.training, geom = "histogram", fill = "density", alpha = 0.5) +
+    training.plot <- ggplot(rts.geog.training, aes(x = .data$AUC, fill = "density", alpha = 0.5)) +
+      geom_histogram(binwidth = 0.05) +
       geom_vline(xintercept = model.evaluation@auc, linetype = "longdash") +
-      xlim(0,1) + guides(fill = FALSE, alpha = FALSE) + xlab("AUC") +
+      xlim(-0.05,1.05) + guides(fill = "none", alpha = "none") + xlab("AUC") +
       ggtitle(paste("Model performance in geographic space on training data")) +
       theme(plot.title = element_text(hjust = 0.5))
 
-    env.training.plot <- qplot(rts.env.training, geom = "histogram", fill = "density", alpha = 0.5) +
-      geom_vline(xintercept = env.model.evaluation@auc, linetype = "longdash") +
-      xlim(0,1) + guides(fill = FALSE, alpha = FALSE) + xlab("AUC") +
-      ggtitle(paste("Model performance in environmental space on training data")) +
+    env.training.plot <- ggplot(rts.env.training, aes(x = .data$AUC, fill = "density", alpha = 0.5)) +
+      geom_histogram(binwidth = 0.05) +
+      geom_vline(xintercept = model.evaluation@auc, linetype = "longdash") +
+      xlim(-0.05,1.05) + guides(fill = "none", alpha = "none") + xlab("AUC") +
+      ggtitle(paste("Model performance in environment space on training data")) +
       theme(plot.title = element_text(hjust = 0.5))
 
     # Make plots for test AUC distributions
     if(test.prop > 0){
-      test.plot <- qplot(rts.geog.test, geom = "histogram", fill = "density", alpha = 0.5) +
-        geom_vline(xintercept = test.evaluation@auc, linetype = "longdash") +
-        xlim(0,1) + guides(fill = FALSE, alpha = FALSE) + xlab("AUC") +
+      test.plot <- ggplot(rts.geog.test, aes(x = .data$AUC, fill = "density", alpha = 0.5)) +
+        geom_histogram(binwidth = 0.05) +
+        geom_vline(xintercept = model.evaluation@auc, linetype = "longdash") +
+        xlim(-0.05,1.05) + guides(fill = "none", alpha = "none") + xlab("AUC") +
         ggtitle(paste("Model performance in geographic space on test data")) +
         theme(plot.title = element_text(hjust = 0.5))
 
-      env.test.plot <- qplot(rts.env.test, geom = "histogram", fill = "density", alpha = 0.5) +
-        geom_vline(xintercept = env.test.evaluation@auc, linetype = "longdash") +
-        xlim(0,1) + guides(fill = FALSE, alpha = FALSE) + xlab("AUC") +
-        ggtitle(paste("Model performance in environmental space on test data")) +
+      env.test.plot <- ggplot(rts.env.test, aes(x = .data$AUC, fill = "density", alpha = 0.5)) +
+        geom_histogram(binwidth = 0.05) +
+        geom_vline(xintercept = model.evaluation@auc, linetype = "longdash") +
+        xlim(-0.05,1.05) + guides(fill = "none", alpha = "none") + xlab("AUC") +
+        ggtitle(paste("Model performance in environment space on test data")) +
         theme(plot.title = element_text(hjust = 0.5))
     } else {
       test.plot <- NA
@@ -355,10 +375,10 @@ message("This function not enabled yet.  Check back soon!")
 }
 
 # Summary for objects of class enmtools.gam
-summary.enmtools.gam <- function(object, ...){
+summary.enmtools.gam <- function(object, plot = TRUE, ...){
 
   cat("\n\nFormula:  ")
-  print(object$formula)
+  cat(deparse(object$formula))
 
   cat("\n\nData table (top ten lines): ")
   print(kable(head(object$analysis.df, 10)))
@@ -387,13 +407,15 @@ summary.enmtools.gam <- function(object, ...){
   cat("\n\nNotes:  \n")
   print(object$notes)
 
-  plot(object)
+  if(plot) {
+    plot(object)
+  }
 }
 
 # Print method for objects of class enmtools.gam
 print.enmtools.gam <- function(x, ...){
 
-  print(summary(x))
+  print(summary(x, ...))
 
 }
 
@@ -401,18 +423,19 @@ print.enmtools.gam <- function(x, ...){
 # Plot method for objects of class enmtools.gam
 plot.enmtools.gam <- function(x, ...){
 
-  suit.points <- data.frame(rasterToPoints(x$suitability))
-  colnames(suit.points) <- c("Longitude", "Latitude", "Suitability")
+  suit.points <- data.frame(rasterToPoints2(x$suitability))
+  colnames(suit.points) <- c("x", "y", "Suitability")
+  test <- terra::as.data.frame(x$test.data, geom = "XY")
 
-  suit.plot <- ggplot(data = suit.points,  aes_string(y = "Latitude", x = "Longitude")) +
-    geom_raster(aes_string(fill = "Suitability")) +
+  suit.plot <- ggplot(data = suit.points,  aes(y = .data$y, x = .data$x)) +
+    geom_raster(aes(fill = .data$Suitability)) +
     scale_fill_viridis_c(option = "B", guide = guide_colourbar(title = "Suitability")) +
     coord_fixed() + theme_classic() +
-    geom_point(data = x$analysis.df[x$analysis.df$presence == 1,],  aes_string(y = "Latitude", x = "Longitude"),
+    geom_point(data = x$analysis.df[x$analysis.df$presence == 1,],  aes(y = .data$y, x = .data$x),
                pch = 21, fill = "white", color = "black", size = 2)
 
-  if(!(all(is.na(x$test.data)))){
-    suit.plot <- suit.plot + geom_point(data = x$test.data,  aes_string(y = "Latitude", x = "Longitude"),
+  if(inherits(x$test.data, "SpatVector")){
+    suit.plot <- suit.plot + geom_point(data = test,  aes(y = .data$y, x = .data$x),
                                         pch = 21, fill = "green", color = "black", size = 2)
   }
 
@@ -430,30 +453,30 @@ plot.enmtools.gam <- function(x, ...){
 predict.enmtools.gam <- function(object, env, maxpts = 1000, clamp = TRUE, ...){
 
   # Make a plot of habitat suitability in the new region
-  suitability <- raster::predict(env, object$model, type = "response")
+  suitability <- terra::predict(env, object$model, type = "response", na.rm = TRUE)
 
   # Clamping and getting a diff layer
   clamping.strength <- NA
   if(clamp == TRUE){
     env <- clamp.env(object$analysis.df, env)
-    clamped.suitability <- raster::predict(env, object$model, type = "response")
+    clamped.suitability <- terra::predict(env, object$model, type = "response", na.rm = TRUE)
     clamping.strength <- clamped.suitability - suitability
     suitability <- clamped.suitability
   }
 
 
-  suit.points <- data.frame(rasterToPoints(suitability))
-  colnames(suit.points) <- c("Longitude", "Latitude", "Suitability")
+  suit.points <- data.frame(rasterToPoints2(suitability))
+  colnames(suit.points) <- c("x", "y", "Suitability")
 
-  suit.plot <- ggplot(data = suit.points,  aes_string(y = "Latitude", x = "Longitude")) +
-    geom_raster(aes_string(fill = "Suitability")) +
+  suit.plot <- ggplot(data = suit.points,  aes(y = .data$y, x = .data$x)) +
+    geom_raster(aes(fill = .data$Suitability)) +
     scale_fill_viridis_c(option = "B", guide = guide_colourbar(title = "Suitability")) +
     coord_fixed() + theme_classic()
 
-  clamp.points <- data.frame(rasterToPoints(clamping.strength))
-  colnames(clamp.points) <- c("Longitude", "Latitude", "Clamping")
+  clamp.points <- data.frame(rasterToPoints2(clamping.strength))
+  colnames(clamp.points) <- c("x", "y", "Clamping")
 
-  clamp.plot <- ggplot(data = clamp.points,  aes_string(y = "Latitude", x = "Longitude")) +
+  clamp.plot <- ggplot(data = clamp.points,  aes(y = .data$y, x = .data$x)) +
     geom_raster(aes_string(fill = "Clamping")) +
     scale_fill_viridis_c(option = "B", guide = guide_colourbar(title = "Suitability")) +
     coord_fixed() + theme_classic()
@@ -488,24 +511,17 @@ gam.precheck <- function(f, species, env){
 
   check.species(species)
 
-  if(!inherits(species$presence.points, "data.frame")){
-    stop("Species presence.points do not appear to be an object of class data.frame")
+  if(!inherits(species$presence.points, "SpatVector")){
+    stop("Species presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(species$background.points, "data.frame")){
-    stop("Species background.points do not appear to be an object of class data.frame")
+  if(!inherits(species$background.points, "SpatVector")){
+    stop("Species background.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(env, c("raster", "RasterLayer", "RasterStack", "RasterBrick"))){
+  if(!inherits(env, c("SpatRaster"))){
     stop("No environmental rasters were supplied!")
   }
 
-  if(ncol(species$presence.points) != 2){
-    stop("Species presence points do not contain longitude and latitude data!")
-  }
-
-  if(ncol(species$background.points) != 2){
-    stop("Species background points do not contain longitude and latitude data!")
-  }
 }
 

@@ -11,18 +11,18 @@
 #'
 #' @examples
 #' \donttest{
-#' install.extras(repos='http://cran.us.r-project.org')
-#' data(euro.worldclim)
-#' data(iberolacerta.clade)
+#' #install.extras(repos='http://cran.us.r-project.org')
 #' monticola.glm <- enmtools.glm(iberolacerta.clade$species$monticola,
 #'                               env = euro.worldclim,
 #'                               test.prop = 0.3)
-#' enmtools.vip(monticola.glm)
+#' if(check.extras("enmtools.vip")) {
+#'   enmtools.vip(monticola.glm)
+#' }
 #' }
 
 enmtools.vip <- function(model, metric = "auc", nsim = 10, method = "permute", verbose = FALSE, ...){
 
-  check.packages(c("vip", "pdp", "fastshap", "reshape2", "viridis"))
+  assert.extras.this.fun()
 
   output <- list()
 
@@ -33,6 +33,8 @@ enmtools.vip <- function(model, metric = "auc", nsim = 10, method = "permute", v
   if(inherits(model, "enmtools.glm")){
     thismodel <- model$model
     feature_names <- labels(terms(thismodel))
+    feature_names <- gsub("poly\\(", "", feature_names)
+    feature_names <- gsub(",.*", "", feature_names)
     train <- model$analysis.df[,-c(1,2)]
     target <- "presence"
     pred_wrapper <- predict
@@ -60,7 +62,7 @@ enmtools.vip <- function(model, metric = "auc", nsim = 10, method = "permute", v
   if(inherits(model, "enmtools.rf.ranger")){
     thismodel <- model$model
     feature_names <- colnames(model$analysis.df)
-    feature_names <- feature_names[!feature_names %in% c("Longitude", "Latitude", "presence")]
+    feature_names <- feature_names[!feature_names %in% c("x", "y", "presence")]
     train <- model$analysis.df[,-c(1,2)]
     target <- "presence"
     pred_wrapper <- function(object, newdata) predict(object, data = newdata, type = "response")$predictions
@@ -82,7 +84,7 @@ enmtools.vip <- function(model, metric = "auc", nsim = 10, method = "permute", v
   if(inherits(model, "enmtools.ppmlasso")){
     thismodel <- model$model
     feature_names <- colnames(model$analysis.df)
-    feature_names <- feature_names[!feature_names %in% c("Longitude", "Latitude", "presence", "wt")]
+    feature_names <- feature_names[!feature_names %in% c("x", "y", "presence", "wt")]
     train <- model$analysis.df[,c(feature_names, "presence")]
     target <- "presence"
     pred_wrapper <- function(object, newdata) predict(object, newdata = newdata, type = "response")

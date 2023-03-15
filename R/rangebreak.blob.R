@@ -3,7 +3,7 @@
 #'
 #' @param species.1 An emtools.species object
 #' @param species.2 An enmtools.species object
-#' @param env A RasterLayer or RasterStack object containing environmental data
+#' @param env A SpatRaster object containing environmental data
 #' @param type The type of model to construct, currently accepts "glm", "mx", "bc", "gam", or "dm"
 #' @param f A function to use for model fitting.  Only required for GLM models at the moment.
 #' @param nreps Number of replicates to perform
@@ -21,20 +21,12 @@
 #'
 #' @examples
 #' \donttest{
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' cyreni <- iberolacerta.clade$species$cyreni
 #' aranica <- iberolacerta.clade$species$aranica
-#' if(requireNamespace("fields", quietly = TRUE)) {
-#'     rangebreak.blob(cyreni, aranica, env = euro.worldclim, type = "glm",
-#' f= pres ~ bio1 + bio12, nreps = 10)
-#' }
 #' }
 
 
 rangebreak.blob <- function(species.1, species.2, env, type, f = NULL, nreps = 99, nback = 1000, bg.source = "default", low.memory = FALSE, rep.dir = NA, verbose = FALSE, clamp = TRUE, ...){
-
-  check.packages("fields")
 
   # Just for visualization
   plotraster <- env[[1]]
@@ -74,7 +66,7 @@ rangebreak.blob <- function(species.1, species.2, env, type, f = NULL, nreps = 9
   # and setting replicate clmaping to FALSE
   if(clamp == TRUE){
     # Adding env (skipped for BC otherwise)
-    this.df <- as.data.frame(extract(env, combined.presence.points))
+    this.df <- as.data.frame(terra::extract(env, combined.presence.points, ID = FALSE))
 
     env <- clamp.env(this.df, env)
   }
@@ -137,10 +129,11 @@ rangebreak.blob <- function(species.1, species.2, env, type, f = NULL, nreps = 9
     rep.species.1 <- species.1
     rep.species.2 <- species.2
 
-    start.point <- combined.presence.points[runif(1, 1, nrow(combined.presence.points)),]
+    start.point <- sample(combined.presence.points, 1)
 
     # Get Euclidean distance from part.points
-    part.points <- cbind(combined.presence.points, as.vector(fields::rdist(start.point, combined.presence.points)))
+    euc.distance <-  as.vector(terra::distance(start.point, combined.presence.points))
+    part.points <- cbind(terra::crds(combined.presence.points), euc.distance)
 
     # Flip a coin to decide whether we're going from top to bottom or other way around
     if(rbinom(1,1,0.5) == 0){
@@ -149,8 +142,11 @@ rangebreak.blob <- function(species.1, species.2, env, type, f = NULL, nreps = 9
       part.points <- part.points[order(part.points[,3], decreasing = TRUE),]
     }
 
-    rep.species.1$presence.points <- part.points[1:nrow(species.1$presence.points), 1:2]
-    rep.species.2$presence.points <- part.points[(nrow(species.1$presence.points) + 1):nrow(part.points), 1:2]
+    rep.species.1$presence.points <- terra::vect(part.points[1:nrow(species.1$presence.points), 1:2],
+                                                 crs = terra::crs(species.1$presence.points))
+    rep.species.2$presence.points <- terra::vect(part.points[(nrow(species.1$presence.points) + 1):nrow(part.points), 1:2],
+                                                 crs = terra::crs(species.2$presence.points))
+
 
     # Building models for reps
     if(type == "glm"){
@@ -207,40 +203,42 @@ rangebreak.blob <- function(species.1, species.2, env, type, f = NULL, nreps = 9
 
   p.values <- apply(reps.overlap, 2, function(x) min(rank(x)[1], rank(-x)[1])/length(x))
 
-  d.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  reps.overlap <- as.data.frame(reps.overlap)
+
+  d.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  i.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  i.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  cor.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"rank.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  cor.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$rank.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"rank.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.d.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"env.D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.d.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$env.D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"env.D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D, Environmental Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.i.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"env.I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.i.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$env.I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"env.I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I, Environmental Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.cor.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"env.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.cor.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$env.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"env.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation, Environmental Space") +
-    ggtitle(paste("Rangebreak test:\n", species.1$species.name, "vs.", species.2$species.name)) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation, Environmental Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
   output <- list(description = paste("\n\nblob rangebreak test", species.1$species.name, "vs.", species.2$species.name),
@@ -273,8 +271,8 @@ rangebreak.blob.precheck <- function(species.1, species.2, env, type, f, nreps){
     stop("Species.2 is not an enmtools.species object!")
   }
 
-  if(!inherits(env, c("raster", "RasterLayer", "RasterStack", "RasterBrick"))){
-    stop("Environmental layers are not a RasterLayer or RasterStack object!")
+  if(!inherits(env, c("SpatRaster"))){
+    stop("Environmental layers are not a SpatRaster object!")
   }
 
   if(type == "glm"){
@@ -299,22 +297,22 @@ rangebreak.blob.precheck <- function(species.1, species.2, env, type, f, nreps){
 
   check.species(species.1)
 
-  if(!inherits(species.1$presence.points, "data.frame")){
-    stop("Species 1 presence.points do not appear to be an object of class data.frame")
+  if(!inherits(species.1$presence.points, "SpatVector")){
+    stop("Species 1 presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(species.1$background.points, "data.frame")){
-    stop("Species 1 background.points do not appear to be an object of class data.frame")
+  if(!inherits(species.1$background.points, "SpatVector")){
+    stop("Species 1 background.points do not appear to be an object of class SpatVector")
   }
 
   check.species(species.2)
 
-  if(!inherits(species.2$presence.points, "data.frame")){
-    stop("Species 2 presence.points do not appear to be an object of class data.frame")
+  if(!inherits(species.2$presence.points, "SpatVector")){
+    stop("Species 2 presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(species.2$background.points, "data.frame")){
-    stop("Species 2 background.points do not appear to be an object of class data.frame")
+  if(!inherits(species.2$background.points, "SpatVector")){
+    stop("Species 2 background.points do not appear to be an object of class SpatVector")
   }
 
   if(any(!colnames(species.1$background.points) %in% colnames(species.2$background.points))){

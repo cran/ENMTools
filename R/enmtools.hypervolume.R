@@ -1,4 +1,4 @@
-#' Takes an emtools.species object and environmental layers, and constructs a hypervolume using the R package hypervolume
+#' THIS FUNCTION IS CURRENTLY DISABLED.  Takes an emtools.species object and environmental layers, and constructs a hypervolume using the R package hypervolume
 #'
 #' @param species An enmtools.species object
 #' @param env A stack of environmental rasters
@@ -13,9 +13,7 @@
 #'
 #' @examples
 #' \donttest{
-#' install.extras(repos='http://cran.us.r-project.org')
-#' data(euro.worldclim)
-#' data(iberolacerta.clade)
+#' #install.extras(repos='http://cran.us.r-project.org')
 #' env <- euro.worldclim[[c(1,8,12,17)]]
 #' if(requireNamespace("hypervolume", quietly = TRUE)) {
 #'     monticola.hv <- enmtools.hypervolume(iberolacerta.clade$species$monticola, env = env)
@@ -24,15 +22,17 @@
 
 enmtools.hypervolume <- function(species, env, samples.per.point = 10, reduction.factor = 0.1, method = "gaussian",  verbose = FALSE, clamp = TRUE, ...){
 
-  check.packages("hypervolume")
+  return("This function is currently disabled, will be re-enabled once hypervolume on CRAN is working with the terra package.")
+
+  assert.extras.this.fun()
 
   hypervolume.precheck(species, env)
 
   for(i in 1:length(names(env))){
-    env[[i]] <- (env[[i]] - cellStats(env[[i]], "mean"))/cellStats(env[[i]], "sd")
+    env[[i]] <- (env[[i]] - as.numeric(terra::global(env[[i]], "mean", na.rm = TRUE)))/as.numeric(terra::global(env[[i]], "sd", na.rm = TRUE))
   }
 
-  climate <- extract(env, species$presence.points)
+  climate <- terra::extract(env, species$presence.points, ID = FALSE)
 
   this.hv = NA
 
@@ -57,18 +57,20 @@ enmtools.hypervolume <- function(species, env, samples.per.point = 10, reduction
 
 
 # Summary for objects of class enmtools.hypervolume
-summary.enmtools.hypervolume <- function(object, ...){
+summary.enmtools.hypervolume <- function(object, plot = TRUE, ...){
 
   print(object$hv)
 
-  plot(object)
+  if(plot) {
+    plot(object)
+  }
 
 }
 
 # Print method for objects of class enmtools.hypervolume
 print.enmtools.hypervolume <- function(x, ...){
 
-  print(summary(x))
+  print(summary(x, ...))
 
 }
 
@@ -76,18 +78,19 @@ print.enmtools.hypervolume <- function(x, ...){
 # Plot method for objects of class enmtools.hypervolume
 plot.enmtools.hypervolume <- function(x, ...){
 
-  suit.points <- data.frame(rasterToPoints(x$suitability))
-  colnames(suit.points) <- c("Longitude", "Latitude", "Suitability")
+  suit.points <- data.frame(rasterToPoints2(x$suitability))
+  colnames(suit.points) <- c("x", "y", "Suitability")
+  test <- terra::as.data.frame(x$test.data, geom = "XY")
 
-  suit.plot <- ggplot(data = suit.points,  aes_string(y = "Latitude", x = "Longitude")) +
-    geom_raster(aes_string(fill = "Suitability")) +
+  suit.plot <- ggplot(data = suit.points,  aes(y = .data$y, x = .data$x)) +
+    geom_raster(aes(fill = .data$Suitability)) +
     scale_fill_viridis_c(option = "B", guide = guide_colourbar(title = "Suitability")) +
     coord_fixed() + theme_classic() +
-    geom_point(data = x$analysis.df,  aes_string(y = "Latitude", x = "Longitude"),
+    geom_point(data = x$analysis.df,  aes(y = .data$y, x = .data$x),
                pch = 21, fill = "white", color = "black", size = 2)
 
-  if(!(all(is.na(x$test.data)))){
-    suit.plot <- suit.plot + geom_point(data = x$test.data,  aes_string(y = "Latitude", x = "Longitude"),
+  if(inherits(x$test.data, "SpatVector")){
+    suit.plot <- suit.plot + geom_point(data = test,  aes(y = .data$y, x = .data$x),
                                         pch = 21, fill = "green", color = "black", size = 2)
   }
 
@@ -107,11 +110,11 @@ predict.enmtools.hypervolume <- function(object, env, reduction.factor = 0.1){
 
   # Make a plot of habitat suitability in the new region
   suitability <- hypervolume::hypervolume_project(object$hv, env, reduction.factor = reduction.factor)
-  suit.points <- data.frame(rasterToPoints(suitability))
-  colnames(suit.points) <- c("Longitude", "Latitude", "Suitability")
+  suit.points <- data.frame(rasterToPoints2(suitability))
+  colnames(suit.points) <- c("x", "y", "Suitability")
 
-  suit.plot <- ggplot(data = suit.points,  aes_string(y = "Latitude", x = "Longitude")) +
-    geom_raster(aes_string(fill = "Suitability")) +
+  suit.plot <- ggplot(data = suit.points,  aes(y = .data$y, x = .data$x)) +
+    geom_raster(aes(fill = .data$Suitability)) +
     scale_fill_viridis_c(option = "B", guide = guide_colourbar(title = "Suitability")) +
     coord_fixed() + theme_classic()
 
@@ -136,16 +139,12 @@ hypervolume.precheck <- function(species, env){
 
   check.species(species)
 
-  if(!inherits(species$presence.points, "data.frame")){
-    stop("Species presence.points do not appear to be an object of class data.frame")
+  if(!inherits(species$presence.points, "SpatVector")){
+    stop("Species presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(env, c("raster", "RasterLayer", "RasterStack", "RasterBrick"))){
+  if(!inherits(env, c("SpatRaster"))){
     stop("No environmental rasters were supplied!")
-  }
-
-  if(ncol(species$presence.points) != 2){
-    stop("Species presence points do not contain longitude and latitude data!")
   }
 
 }

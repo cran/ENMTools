@@ -13,8 +13,6 @@
 #' @keywords keywords
 #'
 #' @examples
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' aurelioi.glm <- enmtools.glm(iberolacerta.clade$species$aurelioi,
 #' euro.worldclim, f = pres ~ bio1 + bio12)
 #' aranica.glm <- enmtools.glm(iberolacerta.clade$species$aranica,
@@ -38,8 +36,8 @@ raster.overlap <- function(x, y, verbose=FALSE){
   x <- raster.standardize(x)
   y <- raster.standardize(y)
 
-  D <- 1 - cellStats(abs(x - y), stat=sum)/2
-  I <- 1 - cellStats((sqrt(x) - sqrt(y))^2, stat=sum)/2
+  D <- 1 - as.numeric(terra::global(abs(x - y), "sum", na.rm = TRUE)/2)
+  I <- 1 - as.numeric(terra::global((sqrt(x) - sqrt(y))^2, "sum", na.rm = TRUE)/2)
   rank.cor <- raster.cor(x, y)
 
   results <- list(D = D, I = I, rank.cor = rank.cor)

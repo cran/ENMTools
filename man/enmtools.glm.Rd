@@ -2,7 +2,7 @@
 % Please edit documentation in R/enmtools.glm.R
 \name{enmtools.glm}
 \alias{enmtools.glm}
-\title{Takes an emtools.species object with presence and background points, and builds a GLM}
+\title{Takes an enmtools.species object with presence and background points, and builds a GLM}
 \usage{
 enmtools.glm(
   species,
@@ -21,13 +21,14 @@ enmtools.glm(
   clamp = TRUE,
   corner = NA,
   bias = NA,
+  step = FALSE,
   ...
 )
 }
 \arguments{
 \item{species}{An enmtools.species object}
 
-\item{env}{A raster or raster stack of environmental data.}
+\item{env}{A SpatRaster of environmental data.}
 
 \item{f}{Standard GLM formula}
 
@@ -57,16 +58,16 @@ enmtools.glm(
 
 \item{bias}{An optional raster estimating relative sampling effort per grid cell.  Will be used for drawing background data.}
 
+\item{step}{Logical determining whether to do stepwise model selection or not}
+
 \item{...}{Arguments to be passed to glm()}
 }
 \value{
 An enmtools model object containing species name, model formula (if any), model object, suitability raster, marginal response plots, and any evaluation objects that were created.
 }
 \description{
-Takes an emtools.species object with presence and background points, and builds a GLM
+Takes an enmtools.species object with presence and background points, and builds a GLM
 }
 \examples{
-data(euro.worldclim)
-data(iberolacerta.clade)
 enmtools.glm(iberolacerta.clade$species$monticola, env = euro.worldclim, f = pres ~ bio1 + bio9)
 }

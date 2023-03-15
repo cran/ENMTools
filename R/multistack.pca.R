@@ -8,9 +8,9 @@
 #' @keywords raster pca environment
 #'
 #' @examples
-#' test1 <- crop(euro.worldclim, extent(-10, -5, 40, 43))
-#' test2 <- crop(euro.worldclim, extent(-5, 5, 40, 48))
-#' test3 <- crop(euro.worldclim, extent(5, 15, 44, 48))
+#' test1 <- terra::crop(euro.worldclim, terra::ext(-10, -5, 40, 43))
+#' test2 <- terra::crop(euro.worldclim, terra::ext(-5, 5, 40, 48))
+#' test3 <- terra::crop(euro.worldclim, terra::ext(5, 15, 44, 48))
 #' multistack.pca(test1, test2, test3)
 
 multistack.pca <- function(..., n = 2){
@@ -46,7 +46,7 @@ multistack.pca <- function(..., n = 2){
   if(mismatch){stop("Layer mismatch!")}
 
   # Get all values
-  env.val <- lapply(stacks, function(x) getValues(x))
+  env.val <- lapply(stacks, function(x) terra::values(x))
 
   # Figure out which cells have complete cases and which have at least one NA
   keepers <- lapply(env.val, function(x) which(complete.cases(x)))
@@ -77,7 +77,7 @@ multistack.pca <- function(..., n = 2){
     offset <- offset + length(keepers[[i]])
     # Rename layers and ship it out
     names(env.pca[[i]]) <- paste0("PC", 1:n)
-    env.pca[[i]] <- setMinMax(env.pca[[i]])
+    env.pca[[i]] <- terra::setMinMax(env.pca[[i]])
   }
 
   # Now we'll make some plots of the distribution of each PC in each stack
@@ -87,14 +87,16 @@ multistack.pca <- function(..., n = 2){
   nkeepers <- sapply(keepers, length)
   data.source <- Reduce(c, sapply(names(keepers), function(x) rep(x, nkeepers[[x]])))
 
-  # Doing this weird local() trick to keep qplot from making the same plot over and over
+  plot.df <- as.data.frame(pca$x)
+
+  # Doing this weird local() trick to keep ggplot from making the same plot over and over
   for (i in 1:n) {
-    pc.name <- colnames(pca$x)[i]
+    pc.name <- colnames(plot.df)[i]
     pc.plots[[pc.name]] <- local({
       i <- i
-      p1 <- qplot(pca$x[,i], fill = data.source,
-                    color = data.source, geom = "density",
-                    alpha = 0.3) + xlab(pc.name) + guides(alpha = FALSE) +
+
+      p1 <- ggplot(data = plot.df, aes(x = .data[[paste0("PC", i)]], fill = data.source, alpha = 0.3)) +
+        geom_density() +  xlab(pc.name) + guides(alpha = "none") +
         labs(fill = "Data source", color = "Data source")
       print(p1)
     })

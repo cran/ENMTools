@@ -13,7 +13,7 @@
 raster.pca <- function(env, n){
 
   # Get all values
-  env.val <- getValues(env)
+  env.val <- terra::values(env)
 
   # Figure out which cells have complete cases and which have at least one NA
   keepers <- which(complete.cases(env.val))
@@ -38,7 +38,7 @@ raster.pca <- function(env, n){
   # Rename layers and ship it out
   names(env.pca) <- paste0("PC", 1:n)
 
-  env.pca <- setMinMax(env.pca)
+  env.pca <- terra::setMinMax(env.pca)
 
   output <- list(rasters = env.pca,
                  pca.object = pca)

@@ -21,7 +21,7 @@ sim.points <- function(object, n.points = 1000, seed = NA, sample.type = "ppp", 
 
   ## check if the model outputs predictions as probabilities (otherwise assume densities)
   suit <- object$suitability
-  # if(all(na.omit(values(suit)) < 1 | na.omit(values(suit)) > 0)) {
+  # if(all(na.omit(terra::values(suit)) < 1 | na.omit(terra::values(suit)) > 0)) {
   #   probs <- TRUE
   # } else {
   #   probs <- FALSE
@@ -31,9 +31,9 @@ sim.points <- function(object, n.points = 1000, seed = NA, sample.type = "ppp", 
 
   if(sample.type == "ppp"){
     # Standardize suitability scores
-    total.dens <- sum(na.omit(values(suit)))
+    total.dens <- sum(na.omit(terra::values(suit)))
 
-    suit <- suit * (n.points / total.dens) * (1 / prod(res(suit)))
+    suit <- suit * (n.points / total.dens) * (1 / prod(terra::res(suit)))
     suit.im <- raster.as.im(suit)
     pnts <- rpoispp(suit.im)
     pres.points <- data.frame(x = pnts$x, y = pnts$y)
@@ -59,9 +59,9 @@ sim.points <- function(object, n.points = 1000, seed = NA, sample.type = "ppp", 
 
   if(sample.type %in% c("binomial", "thresh.pa", "thresh.con")){
 
-    suit <- suit/max(getValues(suit), na.rm = TRUE)
+    suit <- suit/max(terra::values(suit), na.rm = TRUE)
     # Get lat, lon, and suitability
-    sample.df <- rasterToPoints(suit)
+    sample.df <- rasterToPoints2(suit)
 
     # Randomize order
     sample.df <- sample.df[sample(1:nrow(sample.df)),]
@@ -108,12 +108,13 @@ sim.points <- function(object, n.points = 1000, seed = NA, sample.type = "ppp", 
 # Credit goes to Jeffrey Evans via stack exchange:
 # https://gis.stackexchange.com/questions/115159/converting-raster-to-im-object-for-point-process-model-covariate-in-r
 raster.as.im <- function(im) {
-  r <- raster::res(im)
-  orig <- sp::bbox(im)[, 1] + 0.5 * r
+  r <- terra::res(im)
+  x.orig <- terra::ext(im)[1] + 0.5 * r
+  y.orig <- terra::ext(im)[3] + 0.5 * r
   dm <- dim(im)[2:1]
-  xx <- unname(orig[1] + cumsum(c(0, rep(r[1], dm[1] - 1))))
-  yy <- unname(orig[2] + cumsum(c(0, rep(r[2], dm[2] - 1))))
-  return(spatstat.geom::im(matrix(raster::values(im), ncol = dm[1],
+  xx <- unname(x.orig + cumsum(c(0, rep(r[1], dm[1] - 1))))
+  yy <- unname(y.orig + cumsum(c(0, rep(r[2], dm[2] - 1))))
+  return(spatstat.geom::im(matrix(terra::values(im), ncol = dm[1],
                              nrow = dm[2], byrow = TRUE)[dm[2]:1, ],
                       xcol = xx, yrow = yy))
 }

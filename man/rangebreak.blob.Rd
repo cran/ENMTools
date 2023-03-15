@@ -25,7 +25,7 @@ rangebreak.blob(
 
 \item{species.2}{An enmtools.species object}
 
-\item{env}{A RasterLayer or RasterStack object containing environmental data}
+\item{env}{A SpatRaster object containing environmental data}
 
 \item{type}{The type of model to construct, currently accepts "glm", "mx", "bc", "gam", or "dm"}
 
@@ -55,14 +55,8 @@ rangebreak.blob Conduct a blob rangebreak test as described in Glor and Warren 2
 }
 \examples{
 \donttest{
-data(iberolacerta.clade)
-data(euro.worldclim)
 cyreni <- iberolacerta.clade$species$cyreni
 aranica <- iberolacerta.clade$species$aranica
-if(requireNamespace("fields", quietly = TRUE)) {
-    rangebreak.blob(cyreni, aranica, env = euro.worldclim, type = "glm",
-f= pres ~ bio1 + bio12, nreps = 10)
-}
 }
 }
 \keyword{barrier}

@@ -24,7 +24,7 @@ enmtools.maxent(
 \arguments{
 \item{species}{An enmtools.species object}
 
-\item{env}{A raster or raster stack of environmental data.}
+\item{env}{A SpatRaster of environmental data.}
 
 \item{test.prop}{Proportion of data to withhold randomly for model evaluation, or "block" for spatially structured evaluation.}
 
@@ -57,12 +57,8 @@ An enmtools model object containing species name, model formula (if any), model 
 Takes an emtools.species object with presence and background points, and builds a maxent model
 }
 \examples{
-\dontrun{
-install.extras(repos='http://cran.us.r-project.org')
-data(euro.worldclim)
-data(iberolacerta.clade)
-if(requireNamespace("rJava", quietly = TRUE)) {
-    enmtools.maxent(iberolacerta.clade$species$monticola, env = euro.worldclim)
-}
+if(check.extras("enmtools.maxent")) {
+    ## maxent is not working on some platforms so use try()
+    try(enmtools.maxent(iberolacerta.clade$species$monticola, env = euro.worldclim))
 }
 }

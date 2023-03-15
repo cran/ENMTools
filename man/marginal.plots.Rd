@@ -9,7 +9,7 @@ marginal.plots(model, env, layer, standardize = TRUE, verbose = FALSE)
 \arguments{
 \item{model}{An enmtools model object}
 
-\item{env}{A RasterLayer or RasterStack object containing environmental data}
+\item{env}{A SpatRaster object containing environmental data}
 
 \item{layer}{The name of the layer to plot}
 
@@ -24,8 +24,6 @@ results A plot of the marginal response of the model to the environmental variab
 marginal.plots Plots the marginal response of a model to an environmental variable with all other variables held at their mean in env
 }
 \examples{
-data(iberolacerta.clade)
-data(euro.worldclim)
 cyreni.glm <- enmtools.glm(iberolacerta.clade$species$cyreni,
 f = pres ~ bio1 + bio12, euro.worldclim)
 marginal.plots(cyreni.glm, euro.worldclim, "bio1")

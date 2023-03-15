@@ -10,8 +10,6 @@
 #'
 #' @examples
 #' \donttest{
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' cyreni <- iberolacerta.clade$species$cyreni
 #' cyreni.glm <- enmtools.glm(cyreni, euro.worldclim, test.prop = 0.2,
 #' f = pres ~ bio1 + bio12, nback = 500)
@@ -25,9 +23,10 @@ env.breadth <- function(model, env, tolerance = .0001, max.reps = 10, chunk.size
   }
 
   # Setting it up so we can handle either a set of rasters or a list of minima and maxima
-  if(inherits(env, c("raster", "RasterStack", "RasterBrick", "RasterLayer"))){
-    mins <- minValue(env)
-    maxes <- maxValue(env)
+  if(inherits(env, c("SpatRaster"))){
+    minmax <- terra::minmax(env)
+    mins <- minmax[1, ]
+    maxes <- minmax[2, ]
   } else if (inherits(env, "list")){
     mins <- unlist(lapply(env, min))
     maxes <- unlist(lapply(env, max))
@@ -122,8 +121,12 @@ env.breadth <- function(model, env, tolerance = .0001, max.reps = 10, chunk.size
     }
   }
 
+  plot.df <- data.frame(gens = gens,
+                        B2 = this.B2)
+
   output <- list(env.B2 = mean(this.B2),
-                 B2.plot = qplot(gens, this.B2, ylab = "B2", xlab = "Samples"))
+                 B2.plot = ggplot(data = plot.df, aes(x = .data$gens, y = .data$B2)) +
+                   geom_point() + xlab("Samples") + ylab("B2"))
 
   return(output)
 }

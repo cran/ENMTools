@@ -12,13 +12,14 @@ moses.list(
   nback = 1000,
   bg.source = "default",
   verbose = FALSE,
+  step = FALSE,
   ...
 )
 }
 \arguments{
 \item{species.list}{A list of enmtools.species objects, or an enmtools.clade object.}
 
-\item{env}{A raster or raster stack of environmental data.}
+\item{env}{A SpatRaster of environmental data.}
 
 \item{f}{A GLM-style function for model fitting}
 
@@ -29,6 +30,8 @@ moses.list(
 \item{bg.source}{Source for drawing background points.  If "points", it just uses the background points that are already in the species object.  If "range", it uses the range raster.  If "env", it draws points at randome from the entire study area outlined by the first environmental layer.}
 
 \item{verbose}{Controls printing of various messages progress reports.  Defaults to FALSE.}
+
+\item{step}{Logical determining whether to do stepwise model selection or not}
 
 \item{...}{further arguments to be passed to enmtools.glm}
 }

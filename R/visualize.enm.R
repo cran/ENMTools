@@ -13,8 +13,6 @@
 #' @keywords niche plot sdm enm
 #'
 #' @examples
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' aurelioi.glm <- enmtools.glm(iberolacerta.clade$species$aurelioi, euro.worldclim,
 #' f = pres ~ poly(bio1, 4) + poly(bio12, 4))
 #' visualize.enm(aurelioi.glm, euro.worldclim, layers = c("bio1", "bio12"))
@@ -42,10 +40,10 @@ visualize.enm <- function(model, env, nbins = 100, layers = names(env)[1:2], plo
 
   # Setting it up so we can handle either a set of rasters or a list of minima and maxima
 
-  layer1.min <- min(getValues(env[[layers[1]]]), na.rm=TRUE)
-  layer2.min <- min(getValues(env[[layers[2]]]), na.rm=TRUE)
-  layer1.max <- max(getValues(env[[layers[1]]]), na.rm=TRUE)
-  layer2.max <- max(getValues(env[[layers[2]]]), na.rm=TRUE)
+  layer1.min <- min(terra::values(env[[layers[1]]]), na.rm=TRUE)
+  layer2.min <- min(terra::values(env[[layers[2]]]), na.rm=TRUE)
+  layer1.max <- max(terra::values(env[[layers[1]]]), na.rm=TRUE)
+  layer2.max <- max(terra::values(env[[layers[2]]]), na.rm=TRUE)
 
   # Allow a different set of minima and maxima from those set by env layers
   if(!all(is.na(minmax))){
@@ -64,7 +62,7 @@ visualize.enm <- function(model, env, nbins = 100, layers = names(env)[1:2], plo
 
   for(i in names(env)){
     if(!(i %in% layers)){
-      layer.values <- extract(env[[i]], points)
+      layer.values <- unlist(terra::extract(env[[i]], points, ID = FALSE, na.rm = TRUE))
       plot.df <- cbind(plot.df, rep(mean(layer.values, na.rm=TRUE), nrow(plot.df)))
       names <- c(names, i)
     }
@@ -72,15 +70,15 @@ visualize.enm <- function(model, env, nbins = 100, layers = names(env)[1:2], plo
 
   # Get data for plotting training points
   if(plot.points == TRUE){
-    pointdata <- as.data.frame(extract(env[[layers]], points))
+    pointdata <- as.data.frame(terra::extract(env[[layers]], points, ID = FALSE))
   }
 
   # Grab test points
   if(plot.test.data == TRUE){
-    if(!is.data.frame(model$test.data)){
+    if(!inherits(model$test.data, "SpatVector")){
       stop("Test data is not present, but plot.test.data was set to TRUE")
     }
-    test.points <- as.data.frame(cbind(extract(env[[layers]], model$test.data)))
+    test.points <- as.data.frame(cbind(terra::extract(env[[layers]], model$test.data, ID = FALSE)))
   }
 
   colnames(plot.df) <- names
@@ -99,7 +97,7 @@ visualize.enm <- function(model, env, nbins = 100, layers = names(env)[1:2], plo
 
   plot.df <- cbind(plot.df[,1:2], pred)
 
-  suit.plot <- ggplot(data = plot.df, aes_string(y = names[2], x = names[1])) +
+  suit.plot <- ggplot(data = plot.df, aes(y = .data[[names[2]]], x = .data[[names[1]]])) +
     geom_raster(aes(fill = pred)) +
     scale_fill_viridis_c(option = "B", guide = guide_colourbar(title = "Suitability")) +
     theme_classic() +
@@ -107,12 +105,12 @@ visualize.enm <- function(model, env, nbins = 100, layers = names(env)[1:2], plo
     theme(plot.title = element_text(hjust = 0.5))
 
   if(plot.points == TRUE){
-    suit.plot <- suit.plot  + geom_point(data = pointdata, aes_string(y = names[2], x = names[1]),
+    suit.plot <- suit.plot  + geom_point(data = pointdata, aes(y = .data[[names[2]]], x = .data[[names[1]]]),
                                          pch = 21, fill = "white", color = "black", size = 3)
   }
 
   if(plot.test.data == TRUE){
-    suit.plot <- suit.plot + geom_point(data = test.points, aes_string(y = names[2], x = names[1]),
+    suit.plot <- suit.plot + geom_point(data = test.points, aes(y = .data[[names[2]]], x = .data[[names[1]]]),
                                         pch = 24, fill = "green", color = "black", size = 3, alpha = 0.6)
   }
 
@@ -121,8 +119,8 @@ visualize.enm <- function(model, env, nbins = 100, layers = names(env)[1:2], plo
     background.plot <- NA
   } else {
     bgpoints <- model$analysis.df[model$analysis.df$presence == 0,1:2]
-    bgdata <- as.data.frame(extract(env[[layers]], bgpoints))
-    background.plot <- ggplot(bgdata, aes_string(y = names[2], x = names[1])) +
+    bgdata <- as.data.frame(terra::extract(env[[layers]], bgpoints, ID = FALSE, na.rm = TRUE))
+    background.plot <- ggplot(bgdata, aes(y = .data[[names[2]]], x = .data[[names[1]]])) +
       stat_density_2d(aes_string(fill = "..density.."), geom = "raster", contour = FALSE) +
       xlim(layer1.min, layer1.max) + ylim(layer2.min, layer2.max) +
       scale_fill_viridis_c(option = "B", guide = guide_colourbar(title = "Density")) + theme_classic() +
@@ -130,7 +128,7 @@ visualize.enm <- function(model, env, nbins = 100, layers = names(env)[1:2], plo
       theme(plot.title = element_text(hjust = 0.5))
 
     if(plot.points == TRUE){
-      background.plot <- background.plot + geom_point(data = pointdata, aes_string(y = names[2], x = names[1]),
+      background.plot <- background.plot + geom_point(data = pointdata, aes(y = .data[[names[2]]], x = .data[[names[1]]]),
                                                       pch = 21, fill = "white", color = "black", size = 3)
     }
   }

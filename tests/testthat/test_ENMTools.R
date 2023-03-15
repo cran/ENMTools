@@ -1,16 +1,18 @@
 library(testthat)
 library(ENMTools)
 
-data(iberolacerta.clade)
-data(euro.worldclim)
+set.seed(2282023)
+
+#data(iberolacerta.clade)
+#data(euro.worldclim)
 
 expect_species <- function(species){
-  expect_true(inherits(monticola, c("list", "enmtools.species")))
-  expect_equal(names(monticola), c("range", "presence.points", "background.points",
+  expect_true(inherits(species, c("list", "enmtools.species")))
+  expect_equal(names(species), c("range", "presence.points", "background.points",
                                    "models", "species.name"))
-  expect_true(inherits(monticola$range, "RasterLayer"))
-  expect_true(inherits(monticola$presence.points, "data.frame"))
-  expect_true(inherits(monticola$species.name, "character"))
+  expect_true(inherits(species$range, "SpatRaster"))
+  expect_true(inherits(species$presence.points, "SpatVector"))
+  expect_true(inherits(species$species.name, "character"))
 }
 
 
@@ -49,15 +51,15 @@ expect_enmtools_model <- function(model){
     expect_true(inherits(model$env.test.evaluation, "ModelEvaluation"),
                 info = "Test proportion greater than 0 but env.test.evaluation is not a ModelEvaluation object")
 
-    expect_true(inherits(model$test.data, "data.frame"),
-                info = "Test proportion is greater than 0 but test.data is not a data frame")
+    expect_true(inherits(model$test.data, "SpatVector"),
+                info = "Test proportion is greater than 0 but test.data is not a SpatVector")
   } else {
     expect_true(inherits(model$test.evaluation, "logical"))
 
     expect_true(inherits(model$test.data, "logical"))
   }
 
-  expect_true(inherits(model$suitability, "RasterLayer"))
+  expect_true(inherits(model$suitability, "SpatRaster"))
 
   expect_true(inherits(model$response.plots, "list"))
 
@@ -103,13 +105,15 @@ check.clade(iberolacerta.clade)
 #'
 #'
 
-cyreni.dm <- enmtools.dm(cyreni, euro.worldclim, test.prop = 0.2)
-cyreni.bc <- enmtools.bc(cyreni, euro.worldclim, test.prop = 0)
 
 test_that("enmtools.model objects work for core methods", {
 
+  cyreni.dm <- enmtools.dm(cyreni, euro.worldclim, test.prop = 0.2)
+  cyreni.bc <- enmtools.bc(cyreni, euro.worldclim, test.prop = 0)
+
   expect_enmtools_model(cyreni.dm)
   expect_enmtools_model(cyreni.bc)
+
 
   cyreni.bc <- enmtools.bc(cyreni, euro.worldclim, test.prop = 0.2)
   expect_enmtools_model(cyreni.bc)
@@ -117,18 +121,57 @@ test_that("enmtools.model objects work for core methods", {
   cyreni.glm <- enmtools.glm(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2)
   expect_enmtools_model(cyreni.glm)
 
+  expect_enmtools_model(cyreni.glm)
 
+  p.dm <- plot(cyreni.dm)
+  expect_s3_class(p.dm, "ggplot")
+  expect_output(print(cyreni.dm, plot = FALSE))
+
+  p.bc <- plot(cyreni.bc)
+  expect_s3_class(p.bc, "ggplot")
+  expect_output(print(cyreni.bc, plot = FALSE))
+
+  p.glm <- plot(cyreni.glm)
+  expect_s3_class(p.glm, "ggplot")
+  expect_output(print(cyreni.glm, plot = FALSE))
 
   # skip_on_ci()
-  # skip_on_cran()
+  ## Generally slow tests
+  skip_on_cran()
+  cyreni.dm.rts1 <- enmtools.dm(cyreni, euro.worldclim, test.prop = 0.2, rts = 2)
+  cyreni.bc.rts1 <- enmtools.bc(cyreni, euro.worldclim, test.prop = 0.2, rts = 10)
+  cyreni.dm.rts2 <- enmtools.dm(cyreni, euro.worldclim, test.prop = 0, rts = 2)
+  cyreni.bc.rts2 <- enmtools.bc(cyreni, euro.worldclim, test.prop = 0, rts = 10)
+  cyreni.glm.rts1 <- enmtools.glm(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2,
+                                 rts = 10)
+  cyreni.glm.rts2 <- enmtools.glm(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0,
+                                 rts = 10)
+  expect_enmtools_model(cyreni.dm.rts1)
+  expect_enmtools_model(cyreni.bc.rts1)
+  expect_enmtools_model(cyreni.dm.rts2)
+  expect_enmtools_model(cyreni.bc.rts2)
+  expect_enmtools_model(cyreni.glm.rts1)
+  expect_enmtools_model(cyreni.glm.rts2)
   # cyreni.mx <- enmtools.maxent(cyreni, euro.worldclim, test.prop = 0.2)
   # expect_enmtools_model(cyreni.mx)
 })
 
 test_that("rf model objects work", {
   skip_if_not_installed("randomForest")
-  cyreni.rf <- enmtools.rf(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2)
+  expect_warning(cyreni.rf <- enmtools.rf(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2))
   expect_enmtools_model(cyreni.rf)
+  p <- plot(cyreni.rf)
+  expect_s3_class(p, "ggplot")
+  expect_output(print(cyreni.rf, plot = FALSE))
+
+  ## slow
+  skip_on_cran()
+  suppressWarnings(cyreni.rf.rts1 <- enmtools.rf(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2,
+                                               rts.reps = 10))
+  suppressWarnings(cyreni.rf.rts2 <- enmtools.rf(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0,
+                                               rts.reps = 10))
+  expect_enmtools_model(cyreni.rf.rts1)
+  expect_enmtools_model(cyreni.rf.rts2)
 })
 
 
@@ -136,6 +179,18 @@ test_that("ranger model objects work", {
   skip_if_not_installed("ranger")
   cyreni.rf.ranger <- enmtools.rf.ranger(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2)
   expect_enmtools_model(cyreni.rf.ranger)
+  p <- plot(cyreni.rf.ranger)
+  expect_s3_class(p, "ggplot")
+  expect_output(print(cyreni.rf.ranger, plot = FALSE))
+
+  ## slow
+  skip_on_cran()
+  suppressWarnings(cyreni.rf.ranger.rts1 <- enmtools.rf.ranger(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2,
+                                               rts.reps = 10))
+  suppressWarnings(cyreni.rf.ranger.rts2 <- enmtools.rf.ranger(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0,
+                                               rts.reps = 10))
+  expect_enmtools_model(cyreni.rf.ranger.rts1)
+  expect_enmtools_model(cyreni.rf.ranger.rts2)
 })
 
 # test_that("ppm model objects work", {
@@ -148,6 +203,18 @@ test_that("gam model objects work", {
   skip_if_not_installed("mgcv")
   cyreni.gam <- enmtools.gam(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2)
   expect_enmtools_model(cyreni.gam)
+  p <- plot(cyreni.gam)
+  expect_s3_class(p, "ggplot")
+  expect_output(print(cyreni.gam, plot = FALSE))
+
+  ## slow
+  skip_on_cran()
+  cyreni.gam.rts1 <- enmtools.gam(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0.2,
+                                               rts.reps = 10)
+  cyreni.gam.rts2 <- enmtools.gam(cyreni, euro.worldclim, f = pres ~ bio1 + bio9, test.prop = 0,
+                                               rts.reps = 10)
+  expect_enmtools_model(cyreni.gam.rts1)
+  expect_enmtools_model(cyreni.gam.rts2)
 })
 
 
@@ -155,13 +222,33 @@ test_that("gam model objects work", {
 test_that("interactive.plot produces correct object", {
   skip_if_not_installed("leaflet")
   skip_on_ci()
+  cyreni.dm <- enmtools.dm(cyreni, euro.worldclim, test.prop = 0.2)
   m_dm <- interactive.plot(cyreni.dm)
   m_dm_cluster <- interactive.plot(cyreni.dm, cluster.points = TRUE)
-  expect_is(m_dm, "leaflet")
-  expect_is(m_dm_cluster, "leaflet")
+  expect_s3_class(m_dm, "leaflet")
+  expect_s3_class(m_dm_cluster, "leaflet")
   expect_match(sapply(m_dm_cluster$x$calls, function(x) x$method), "addRasterImage", all = FALSE)
   expect_match(sapply(m_dm$x$calls, function(x) x$method), "addRasterImage", all = FALSE)
 })
+
+test_that("backwards compatability works", {
+  cyreni <- iberolacerta.clade$species$cyreni
+  loaded <- load("sysdata.rda")
+  on.exit(rm(list = loaded), add = TRUE, after = FALSE)
+  expect_warning(cyreni.glm.raster <- enmtools.glm(cyreni,
+                                                   euro.worldclim,
+                                                   f = pres ~ bio1 + bio9,
+                                                   test.prop = 0.2),
+                 "env is not the expected SpatRaster class",
+                 fixed = TRUE)
+  expect_enmtools_model(cyreni.glm.raster)
+  suppressWarnings(cyreni.glm.raster2 <- enmtools.glm(iberolacerta.clade$species$cyreni,
+                                                   euro.worldclim,
+                                                   f = pres ~ bio1 + bio9,
+                                                   test.prop = 0.2))
+  expect_enmtools_model(cyreni.glm.raster2)
+})
+
 
 #' Geographic space metrics and visualization
 #'
@@ -178,6 +265,7 @@ test_that("interactive.plot produces correct object", {
 #' Monte Carlo tests, ENMTools-style
 #'
 #'
+
 
 
 #' Ecospat tests

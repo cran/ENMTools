@@ -1,17 +1,18 @@
 #' Takes a list of enmtools.species objects and uses model selection to ask whether they're better treated jointly or separately
 #'
 #' @param species.list A list of enmtools.species objects, or an enmtools.clade object.
-#' @param env A raster or raster stack of environmental data.
+#' @param env A SpatRaster of environmental data.
 #' @param nback Number of background points to generate, if any
 #' @param f A GLM-style function for model fitting
 #' @param eval Boolean indicating whether or not GLMs should be evaluated using AUC/TSS/etc.
 #' @param bg.source Source for drawing background points.  If "points", it just uses the background points that are already in the species object.  If "range", it uses the range raster.  If "env", it draws points at randome from the entire study area outlined by the first environmental layer.
 #' @param verbose Controls printing of various messages progress reports.  Defaults to FALSE.
+#' @param step Logical determining whether to do stepwise model selection or not
 #' @param ... further arguments to be passed to enmtools.glm
 #'
 #' @return A list containing GLMs for the groups separately and together, as well as AIC values for those models.
 
-moses.list <- function(species.list, env, f = NULL, eval = FALSE, nback = 1000, bg.source = "default", verbose = FALSE, ...){
+moses.list <- function(species.list, env, f = NULL, eval = FALSE, nback = 1000, bg.source = "default", verbose = FALSE, step = FALSE, ...){
 
   if(inherits(species.list, "enmtools.clade")){
     species.list <- species.list$species
@@ -29,14 +30,14 @@ moses.list <- function(species.list, env, f = NULL, eval = FALSE, nback = 1000, 
   }
 
   # We're just going to do all separate vs. all together.  Work on a separate function for phylo tests.
-  separate.glms <- lapply(species.list, function(x) enmtools.glm(x, env, f, eval, verbose = verbose, ...))
+  separate.glms <- lapply(species.list, function(x) enmtools.glm(x, env, f, eval, verbose = verbose, step = step, ...))
   names(separate.glms) <- lapply(species.list, function(x) x$species.name)
   separate.aic <- sum(unlist(lapply(separate.glms, function(x) x$model$aic)))
 
   combined.species <- enmtools.species(presence.points = as.data.frame(do.call("rbind", lapply(species.list, function(x) rbind(x$presence.points)))),
                                        background.points = as.data.frame(do.call("rbind", lapply(species.list, function(x) rbind(x$background.points)))),
                                        species.name = "combined")
-  combined.glm <- enmtools.glm(combined.species, env, f, eval, verbose = verbose, ...)
+  combined.glm <- enmtools.glm(combined.species, env, f, eval, verbose = verbose, step = step, ...)
   combined.aic <- combined.glm$model$aic
 
   output <- list(separate.glms = separate.glms,
@@ -56,7 +57,7 @@ check.moses <- function(species.list, env, f){
 
   lapply(species.list, function(x) check.species(x))
 
-  if(!inherits(env, c("raster", "RasterLayer", "RasterStack", "RasterBrick"))){
+  if(!inherits(env, c("SpatRaster"))){
     stop("No environmental rasters were supplied!")
   }
 

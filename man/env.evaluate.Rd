@@ -20,7 +20,7 @@ env.evaluate(
 
 \item{model}{An enmtools.model object or a model that can be projected using the predict() function of dismo}
 
-\item{env}{A raster or raster stack of environmental data.}
+\item{env}{A SpatRaster of environmental data.}
 
 \item{bg.source}{Determines whether minima and maxima of the environment space should be picked using the environment layers or the background points.}
 
@@ -40,8 +40,6 @@ Calculates evaluation metrics (AUC, etc.) using latin hypercube sampling in envi
 }
 \examples{
 \donttest{
-data(iberolacerta.clade)
-data(euro.worldclim)
 cyreni <- iberolacerta.clade$species$cyreni
 cyreni.glm <- enmtools.glm(cyreni, euro.worldclim, test.prop = 0.2,
 f = pres ~ bio1 + bio12, nback = 500)

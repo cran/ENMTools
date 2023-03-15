@@ -12,7 +12,6 @@
 #' @keywords keywords
 #'
 #' @examples
-#' data(euro.worldclim)
 #' raster.standardize(euro.worldclim[[1]])
 
 
@@ -26,5 +25,5 @@ raster.standardize <- function(x, verbose=FALSE){
     print(paste("Starting standardize on", x, "at", Sys.time()))
   }
 
-  return(x/cellStats(x, stat=sum))
+  return(x/as.numeric(terra::global(x, "sum", na.rm = TRUE)))
 }

@@ -6,7 +6,7 @@
 #'
 #' @param species.1 An emtools.species object from which presence points (asymmetric) or background (symmetric) will be sampled.
 #' @param species.2 An enmtools.species object from which background will be sampled.
-#' @param env A RasterLayer or RasterStack object containing environmental data
+#' @param env A SpatRaster object containing environmental data
 #' @param type The type of model to construct, currently accepts "glm", "mx", "bc", "gam", or "dm"
 #' @param f A function to use for model fitting.  Only required for GLM models at the moment.
 #' @param nreps Number of replicates to perform
@@ -26,8 +26,6 @@
 #'
 #' @examples
 #' \donttest{
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' cyreni <- iberolacerta.clade$species$cyreni
 #' monticola <- iberolacerta.clade$species$monticola
 #' cyreni$range <- background.raster.buffer(cyreni$presence.points, 100000, euro.worldclim)
@@ -85,7 +83,7 @@ background.test <- function(species.1, species.2, env, type, f = NULL, nreps = 9
     combined.all.points <- rbind(species.1$presence.points, species.2$presence.points, combined.background.points)
 
     # Adding env (skipped for BC otherwise)
-    this.df <- as.data.frame(extract(env, combined.all.points))
+    this.df <- as.data.frame(terra::extract(env, combined.all.points, ID = FALSE))
 
     env <- clamp.env(this.df, env)
   }
@@ -148,6 +146,7 @@ background.test <- function(species.1, species.2, env, type, f = NULL, nreps = 9
 
       #background sampling for species 1, only run when we're doing a symmetric test
       combined.points <- rbind(rep.species.1$presence.points, species.1.original.background)
+      terra::values(combined.points) <- NULL
       sample.vector <- sample(nrow(combined.points))
       combined.points <- combined.points[sample.vector,]
       rep.species.1$presence.points <- combined.points[1:nrow(species.1$presence.points),]
@@ -157,6 +156,7 @@ background.test <- function(species.1, species.2, env, type, f = NULL, nreps = 9
 
     # Background sampling for species 2, run regardless of the type of test
     combined.points <- rbind(rep.species.2$presence.points, species.2.original.background)
+    terra::values(combined.points) <- NULL
     sample.vector <- sample(nrow(combined.points))
     combined.points <- combined.points[sample.vector,]
     rep.species.2$presence.points <- combined.points[1:nrow(species.2$presence.points),]
@@ -216,38 +216,42 @@ background.test <- function(species.1, species.2, env, type, f = NULL, nreps = 9
   print(reps.overlap)
   p.values <- apply(reps.overlap, 2, function(x) min(rank(x)[1], rank(-x)[1])/length(x))
 
+  reps.overlap <- as.data.frame(reps.overlap)
 
-  d.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  d.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D") + ggtitle(description) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  i.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  i.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I") + ggtitle(description) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  cor.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"rank.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  cor.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$rank.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"rank.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation") + ggtitle(description) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.d.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"env.D"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.d.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$env.D, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"env.D"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("D, Environmental Space") +
-    ggtitle(description) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("D, Environmental Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.i.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"env.I"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.i.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$env.I, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"env.I"], linetype = "longdash") +
-    xlim(-.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("I, Environmental Space") +
-    ggtitle(description) +
+    xlim(-.05,1.05) + guides(fill = "none", alpha = "none") + xlab("I, Environmental Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
-  env.cor.plot <- qplot(reps.overlap[2:nrow(reps.overlap),"env.cor"], geom = "histogram", fill = "density", alpha = 0.5) +
+  env.cor.plot <- ggplot(reps.overlap[2:nrow(reps.overlap),], aes(x = .data$env.cor, fill = "density", alpha = 0.5)) +
+    geom_histogram(binwidth = 0.05) +
     geom_vline(xintercept = reps.overlap[1,"env.cor"], linetype = "longdash") +
-    xlim(-1.05,1.05) + guides(fill = FALSE, alpha = FALSE) + xlab("Rank Correlation, Environmental Space") +
-    ggtitle(description) +
+    xlim(-1.05,1.05) + guides(fill = "none", alpha = "none") + xlab("Rank Correlation, Environmental Space") +
     theme(plot.title = element_text(hjust = 0.5))
 
 
@@ -280,8 +284,8 @@ background.precheck <- function(species.1, species.2, env, type, f, nreps, test.
     stop("Species.2 is not an enmtools.species object!")
   }
 
-  if(!inherits(env, c("raster", "RasterLayer", "RasterStack", "RasterBrick"))){
-    stop("Environmental layers are not a RasterLayer or RasterStack object!")
+  if(!inherits(env, c("SpatRaster"))){
+    stop("Environmental layers are not a SpatRaster object!")
   }
 
   if(type == "glm"){
@@ -306,30 +310,22 @@ background.precheck <- function(species.1, species.2, env, type, f, nreps, test.
 
   check.species(species.1)
 
-  if(!inherits(species.1$presence.points, "data.frame")){
-    stop("Species 1 presence.points do not appear to be an object of class data.frame")
+  if(!inherits(species.1$presence.points, "SpatVector")){
+    stop("Species 1 presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(species.1$background.points, "data.frame")){
-    stop("Species 1 background.points do not appear to be an object of class data.frame")
+  if(!inherits(species.1$background.points, "SpatVector")){
+    stop("Species 1 background.points do not appear to be an object of class SpatVector")
   }
 
   check.species(species.2)
 
-  if(!inherits(species.2$presence.points, "data.frame")){
-    stop("Species 2 presence.points do not appear to be an object of class data.frame")
+  if(!inherits(species.2$presence.points, "SpatVector")){
+    stop("Species 2 presence.points do not appear to be an object of class SpatVector")
   }
 
-  if(!inherits(species.2$background.points, "data.frame")){
-    stop("Species 2 background.points do not appear to be an object of class data.frame")
-  }
-
-  if(any(!colnames(species.1$background.points) %in% colnames(species.2$background.points))){
-    stop("Column names for species background points do not match!")
-  }
-
-  if(any(!colnames(species.1$presence.points) %in% colnames(species.2$presence.points))){
-    stop("Column names for species presence points do not match!")
+  if(!inherits(species.2$background.points, "SpatVector")){
+    stop("Species 2 background.points do not appear to be an object of class SpatVector")
   }
 
   if(is.na(species.1$species.name)){

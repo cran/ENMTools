@@ -10,10 +10,11 @@
 #' @param overlap.matrix A matrix of overlaps to use, for option overlap.source = "matrix"
 #' @param metric The overlap metric to use. For ENM sources, this can be any combination of "D", "I", "cor", "env.D", "env.I", and "env.cor".
 #' for range and point overlap this argument is ignored.
+#' @param ... Arguments to be passed to modeling functions for ENM-based overlaps.
 #'
 #' @return A list containing a data frame of coefficients from the empirical regression of overlap on time along with the coefficients from all Monte Carlo replicates, along with plots and p values for the accompanying statistical tests.
 
-enmtools.aoc <- function(clade, env = NULL,  overlap.source, nreps = 100, f = NULL, overlap.matrix = NULL, metric = "D"){
+enmtools.aoc <- function(clade, env = NULL,  overlap.source, nreps = 100, f = NULL, overlap.matrix = NULL, metric = "D", ...){
 
   description <- "Age-Overlap Correlation from Monte Carlo Test"
 
@@ -26,27 +27,27 @@ enmtools.aoc <- function(clade, env = NULL,  overlap.source, nreps = 100, f = NU
 
   # Bioclim models
   if(overlap.source == "bc"){
-    empirical.models <- lapply(clade$species, function(x) enmtools.bc(x, env = env))
+    empirical.models <- lapply(clade$species, function(x) enmtools.bc(x, env = env, ...))
   }
 
   # Domain models
   if(overlap.source == "dm"){
-    empirical.models <- lapply(clade$species, function(x) enmtools.dm(x, env = env))
+    empirical.models <- lapply(clade$species, function(x) enmtools.dm(x, env = env, ...))
   }
 
   # GAM models
   if(overlap.source == "gam"){
-    empirical.models <- lapply(clade$species, function(x) enmtools.gam(x, env = env, f = f))
+    empirical.models <- lapply(clade$species, function(x) enmtools.gam(x, env = env, f = f, ...))
   }
 
   # GLM models
   if(overlap.source == "glm"){
-    empirical.models <- lapply(clade$species, function(x) enmtools.glm(x, env = env, f = f))
+    empirical.models <- lapply(clade$species, function(x) enmtools.glm(x, env = env, f = f, ...))
   }
 
   # Maxent models
   if(overlap.source == "mx"){
-    empirical.models <- lapply(clade$species, function(x) enmtools.maxent(x, env = env))
+    empirical.models <- lapply(clade$species, function(x) enmtools.maxent(x, env = env), ...)
   }
 
   if(is.na(match(overlap.source, c("range", "points", "matrix")))){
@@ -115,21 +116,29 @@ enmtools.aoc <- function(clade, env = NULL,  overlap.source, nreps = 100, f = NU
                     do.call(rbind, lapply(reps, function(x) x$coefficients)))
 
   rownames(reps.aoc) <- c("empirical", paste("rep", 1:nreps))
+  colnames(reps.aoc) <- c("Intercept", "Age")
 
   # Modified for two-tailed test
   p.values <- apply(reps.aoc, 2, function(x) min(rank(x)[1], rank(-x)[1])/length(x))
 
-  intercept.plot <- ggplot2::qplot(reps.aoc[2:nrow(reps.aoc),"(Intercept)"], geom = "histogram", fill = "histogram", alpha = 0.5) +
-    geom_vline(xintercept = reps.aoc[1,"(Intercept)"], linetype = "longdash") +
-    guides(fill = FALSE, alpha = FALSE) + xlab("Intercept") + ggtitle(description) +
+  reps.aoc <- as.data.frame(reps.aoc)
+
+  intercept.plot <- ggplot(reps.aoc[2:nrow(reps.aoc),], aes(x = .data$Intercept, fill = "density", alpha = 0.5)) +
+    geom_histogram(bins = 20) +
+    geom_vline(xintercept = reps.aoc[1,"Intercept"], linetype = "longdash") +
+    guides(fill = "none", alpha = "none") + xlab("Intercept") + ggtitle(description) +
     theme(plot.title = element_text(hjust = 0.5))
 
-  slope.plot <- ggplot2::qplot(reps.aoc[2:nrow(reps.aoc),"empirical.df$age"], geom = "histogram", fill = "histogram", alpha = 0.5) +
-    geom_vline(xintercept = reps.aoc[1,"empirical.df$age"], linetype = "longdash") +
-    guides(fill = FALSE, alpha = FALSE) + xlab("Slope") + ggtitle(description) +
+  slope.plot <- ggplot(reps.aoc[2:nrow(reps.aoc),], aes(x = .data$Age, fill = "density", alpha = 0.5)) +
+    geom_histogram(bins = 20) +
+    geom_vline(xintercept = reps.aoc[1,"Age"], linetype = "longdash") +
+    guides(fill = "none", alpha = "none") + xlab("Slope") + ggtitle(description) +
     theme(plot.title = element_text(hjust = 0.5))
 
-  regressions.plot <- ggplot2::qplot(empirical.df$age, empirical.df$overlap) + theme_bw()
+
+
+  regressions.plot <- ggplot(data = empirical.df, aes(x = .data$age, y = .data$overlap)) +
+    theme_bw() + geom_point()
   for(i in 2:min(100, nrow(reps.aoc))){
     regressions.plot <- regressions.plot + geom_abline(slope=reps.aoc[i,2],
                                                        intercept=reps.aoc[i,1],
@@ -172,7 +181,7 @@ print.enmtools.aoc <- function(x, ...){
 
 plot.enmtools.aoc <- function(x, ...){
 
-  check.packages("ape")
+  assert.extras.this.fun()
 
   plot(x$tree, no.margin=TRUE, edge.width=2, cex=1)
   ape::nodelabels(format(x$empirical.df$overlap, digits = 1, nsmall = 2))
@@ -195,7 +204,7 @@ enmtools.aoc.precheck <- function(clade, nreps, overlap.source, env,  model, ove
 
   # Check to make sure env data is good
   if(!is.na(match(overlap.source, c("bc", "dm", "mx", "glm", "gam")))){
-    if(!inherits(env, c("raster", "RasterLayer", "RasterStack", "RasterBrick"))){
+    if(!inherits(env, c("SpatRaster"))){
       stop("No environmental rasters were supplied!")
     }
   }

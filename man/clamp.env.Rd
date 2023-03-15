@@ -9,7 +9,7 @@ clamp.env(model, env)
 \arguments{
 \item{model}{An enmtools.model object.  Alternatively the analysis.df component of an enmtools.model object.}
 
-\item{env}{A raster or raster stack of environmental data.}
+\item{env}{A SpatRaster of environmental data.}
 }
 \value{
 An enmtools model object containing species name, model formula (if any), model object, suitability raster, marginal response plots, and any evaluation objects that were created.
@@ -19,11 +19,9 @@ Takes an emtools.model object and a set of environment layers and clamps the env
 }
 \examples{
 \donttest{
-data(euro.worldclim)
-data(iberolacerta.clade)
 monticola.gam <- enmtools.gam(iberolacerta.clade$species$monticola, euro.worldclim[[c(1,5,9,13)]])
 euro.clamped <- clamp.env(monticola.gam, euro.worldclim)
 clamped.prediction <- predict(monticola.gam, euro.clamped)
-raster::plot(clamped.prediction$suitability - monticola.gam$suitability)
+terra::plot(clamped.prediction$suitability - monticola.gam$suitability)
 }
 }

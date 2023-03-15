@@ -20,14 +20,13 @@ background.buffer <- function(points, buffer.width, buffer.type = "circles", mas
   pol <- NA
 
   if(buffer.type == "circles"){
-    x <- circles(points, d=buffer.width, lonlat=TRUE)
-    pol <- rgeos::gUnaryUnion(x@polygons)
+    x <- terra::buffer(points, width = buffer.width)
+    pol <- terra::aggregate(x)
   }
 
   if(buffer.type == "convhull"){
-    x <- dismo::convHull(points)
-    pol <- rgeos::gUnaryUnion(x@polygons)
-    pol <- raster::buffer(pol, width = buffer.width)
+    x <- terra::convHull(points)
+    pol <- terra::buffer(pol, width = buffer.width)
   }
 
   # if return.type = shape, just return from here
@@ -36,15 +35,15 @@ background.buffer <- function(points, buffer.width, buffer.type = "circles", mas
   # From here we're either returning points or a raster
 
   # Trim to raster
-  if(!inherits(mask, c("raster", "RasterLayer", "RasterBrick", "RasterStack"))){
-    stop("Mask needs to be a raster object!")
+  if(!inherits(mask, c("SpatRaster"))){
+    stop("Mask needs to be a SpatRaster object!")
   }
 
   if(length(names(mask)) > 1){
     mask <- mask[[1]]
   }
 
-  buffer.raster <- mask(mask, pol)
+  buffer.raster <- terra::mask(mask, pol)
 
   # if return.type = "raster", just return from here
   if(return.type == "raster"){
@@ -54,9 +53,7 @@ background.buffer <- function(points, buffer.width, buffer.type = "circles", mas
 
   # sample points
   if(return.type == "points"){
-    xy <- sampleRandom(buffer.raster, size=n, xy=TRUE)
-
-    colnames(xy)[1:2] <- c(colnames(points))
+    xy <- terra::spatSample(buffer.raster, size=n, xy=TRUE, na.rm=TRUE, warn = FALSE)[,1:2]
 
     # If we didn't get as many points as we wanted
     if(nrow(xy) < 1){
@@ -66,7 +63,9 @@ background.buffer <- function(points, buffer.width, buffer.type = "circles", mas
       xy <- xy[sample(1:nrow(xy), n, replace = TRUE),]
     }
 
-    return(as.data.frame(xy[,1:2]))
+    xy <- terra::vect(xy, crs = terra::crs(points), geom = c("x", "y"))
+
+    return(xy)
   }
 
 }

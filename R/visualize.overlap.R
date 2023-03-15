@@ -13,10 +13,8 @@
 #'
 #' @examples
 #' \donttest{
-#' data(iberolacerta.clade)
 #' ar <- iberolacerta.clade$species$aranica
 #' au <- iberolacerta.clade$species$aurelioi
-#' data(euro.worldclim)
 #' aranica.dm <- enmtools.dm(ar, euro.worldclim)
 #' aurelioi.dm <- enmtools.dm(au, euro.worldclim)
 #' visualize.overlap(aranica.dm, aurelioi.dm, euro.worldclim, layers = c("bio1", "bio9"))
@@ -53,10 +51,10 @@ visualize.overlap <- function(model.1, model.2, env, nbins = 100, layers, plot.p
   }
 
 
-  layer1.min <- min(getValues(env[[layers[1]]]), na.rm=TRUE)
-  layer2.min <- min(getValues(env[[layers[2]]]), na.rm=TRUE)
-  layer1.max <- max(getValues(env[[layers[1]]]), na.rm=TRUE)
-  layer2.max <- max(getValues(env[[layers[2]]]), na.rm=TRUE)
+  layer1.min <- min(terra::values(env[[layers[1]]]), na.rm=TRUE)
+  layer2.min <- min(terra::values(env[[layers[2]]]), na.rm=TRUE)
+  layer1.max <- max(terra::values(env[[layers[1]]]), na.rm=TRUE)
+  layer2.max <- max(terra::values(env[[layers[2]]]), na.rm=TRUE)
 
   # Build plot df
   plot.df <- cbind(rep(seq(layer1.min, layer1.max, length = nbins), nbins),
@@ -68,14 +66,14 @@ visualize.overlap <- function(model.1, model.2, env, nbins = 100, layers, plot.p
   # Set value to mean for all non-target vars
   for(i in names(env)){
     if(!(i %in% layers)){
-      layer.values <- extract(env[[i]], rbind(points.1, points.2))
+      layer.values <- unlist(terra::extract(env[[i]], rbind(points.1[,1:2], points.2[,1:2]), ID = FALSE))
       plot.df <- cbind(plot.df, rep(mean(layer.values, na.rm=TRUE), nrow(plot.df)))
       names <- c(names, i)
     }
   }
 
-  pointdata.1 <- as.data.frame(extract(env[[layers]], points.1))
-  pointdata.2 <- as.data.frame(extract(env[[layers]], points.2))
+  pointdata.1 <- as.data.frame(terra::extract(env[[layers]], points.1[,1:2], ID = FALSE))
+  pointdata.2 <- as.data.frame(terra::extract(env[[layers]], points.2[,1:2], ID = FALSE))
 
   colnames(plot.df) <- names
 
@@ -104,7 +102,7 @@ visualize.overlap <- function(model.1, model.2, env, nbins = 100, layers, plot.p
   plot.df <- cbind(plot.df[,1:2], pred1, pred2)
 
   #This is where I'm going to need to look up how to overlap two contours!
-  overlap.plot <- ggplot(data = plot.df, aes_string(y = names[2], x = names[1])) +
+  overlap.plot <- ggplot(data = plot.df, aes(y = .data[[names[2]]], x = .data[[names[1]]])) +
     geom_contour(aes(z = pred1), colour = "red") + geom_contour(aes(z = pred2)) +
     scale_fill_viridis_c(option = "B", guide = guide_colourbar(title = "Suitability")) +
     theme_classic() +

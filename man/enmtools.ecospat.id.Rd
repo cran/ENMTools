@@ -50,12 +50,12 @@ enmtools.ecospat.id, Runs an ecospat identity test using enmtool.species objects
 }
 \examples{
 \donttest{
-install.extras(repos='http://cran.us.r-project.org')
-data(iberolacerta.clade)
-data(euro.worldclim)
+#install.extras(repos='http://cran.us.r-project.org')
 monticola <- iberolacerta.clade$species$monticola
 cyreni <- iberolacerta.clade$species$cyreni
-enmtools.ecospat.id(monticola, cyreni, euro.worldclim[[1:2]], nback = 500)
+if(check.extras("enmtools.ecospat.id")) {
+  enmtools.ecospat.id(monticola, cyreni, euro.worldclim[[1:2]], nback = 500)
+}
 }
 }
 \keyword{enm}

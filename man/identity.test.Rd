@@ -25,7 +25,7 @@ identity.test(
 
 \item{species.2}{An enmtools.species object}
 
-\item{env}{A RasterLayer or RasterStack object containing environmental data}
+\item{env}{A SpatRaster object containing environmental data}
 
 \item{type}{The type of model to construct, currently accepts "glm", "mx", "bc", "gam", "rf", or "dm"}
 
@@ -55,8 +55,6 @@ identity.test Conduct a niche identity/equivalency test as described in Warren e
 }
 \examples{
 \donttest{
-data(iberolacerta.clade)
-data(euro.worldclim)
 cyreni <- iberolacerta.clade$species$cyreni
 monticola <- iberolacerta.clade$species$monticola
 cyreni$range <- background.raster.buffer(cyreni$presence.points, 100000, euro.worldclim)

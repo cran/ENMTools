@@ -19,7 +19,7 @@
 
 interactive.plot.enmtools.species <- function(x, map.provider = "Esri.WorldPhysical", cluster.points = FALSE, max.bytes = 4194304, ...) {
 
-  check.packages("leaflet")
+  assert.extras.this.fun()
 
   m <- leaflet::leaflet() %>%
     leaflet::addProviderTiles(map.provider, group = "Base map")
@@ -28,9 +28,9 @@ interactive.plot.enmtools.species <- function(x, map.provider = "Esri.WorldPhysi
   labels <- NULL
   colors <- NULL
 
-  if(inherits(x$range, "RasterLayer")){
+  if(inherits(raster::raster(x$range), "RasterLayer")){
     m <- m %>%
-      leaflet::addRasterImage(x$range, function(y) ifelse(is.na(y), "#00000000", "#00000090"),
+      leaflet::addRasterImage(raster::raster(x$range), function(y) ifelse(is.na(y), "#00000000", "#00000090"),
                      group = "Range", maxBytes = max.bytes)
     overlays <- c(overlays, "Range")
     labels <- c(labels, "Range raster")
@@ -38,10 +38,10 @@ interactive.plot.enmtools.species <- function(x, map.provider = "Esri.WorldPhysi
   }
 
 
-  if(class(x$background.points)  %in% c("data.frame", "matrix")){
-    background.points <- x$background.points
+  if(class(x$background.points) %in% c("SpatVector")){
+    background.points <- terra::as.data.frame(x$background.points, geom = "XY")
     m <- m %>%
-      leaflet::addCircleMarkers(~Longitude, ~Latitude, color = "red",
+      leaflet::addCircleMarkers(~x, ~y, color = "red",
                        data = background.points, stroke = FALSE, fillOpacity = 0.5,
                        radius = 8, group = "Background points")
     overlays <- c(overlays, "Background points")
@@ -49,17 +49,17 @@ interactive.plot.enmtools.species <- function(x, map.provider = "Esri.WorldPhysi
     colors <- c(colors, "red")
   }
 
-  if(class(x$presence.points)  %in% c("data.frame", "matrix")){
-    presence.points <- x$presence.points
+  if(class(x$presence.points)  %in% c("SpatVector")){
+    presence.points <- terra::as.data.frame(x$presence.points, geom = "XY")
     if(cluster.points) {
       m <- m %>%
-        leaflet::addCircleMarkers(~Longitude, ~Latitude, color = "green",
+        leaflet::addCircleMarkers(~x, ~y, color = "green",
                          stroke = FALSE, fillOpacity = 0.5, radius = 8,
                          data = presence.points, clusterOptions = leaflet::markerClusterOptions(),
                          group = "Occurrence points")
     } else {
       m <- m %>%
-        leaflet::addCircleMarkers(~Longitude, ~Latitude, color = "green",
+        leaflet::addCircleMarkers(~x, ~y, color = "green",
                          data = presence.points, stroke = FALSE, fillOpacity = 0.5,
                          radius = 8, group = "Occurrence points")
     }

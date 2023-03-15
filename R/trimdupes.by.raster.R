@@ -6,18 +6,14 @@
 #' @return A new data frame with one point per grid cell.
 #'
 #' @examples
-#' data(iberolacerta.clade)
-#' data(euro.worldclim)
 #' pts <- iberolacerta.clade$species$monticola$presence.points
 #' trimdupes.by.raster(pts, euro.worldclim)
 
 trimdupes.by.raster <- function(points, mask){
 
-  pa <- rasterize(points, mask, field=1)
+  pa <- terra::rasterize(as.matrix(terra::crds(points)), mask[[1]])
 
-  new.points <- rasterToPoints(pa)[,1:2]
-
-  colnames(new.points) <- c("Longitude", "Latitude")
+  new.points <- terra::as.points(pa)
 
   return(new.points)
 }

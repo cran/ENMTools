@@ -29,7 +29,7 @@ enmtools.gam(
 \arguments{
 \item{species}{An enmtools.species object}
 
-\item{env}{A raster or raster stack of environmental data.}
+\item{env}{A SpatRaster of environmental data.}
 
 \item{f}{Standard gam formula}
 
@@ -73,8 +73,6 @@ Takes an emtools.species object with presence and background points, and builds 
 }
 \examples{
 \donttest{
-data(euro.worldclim)
-data(iberolacerta.clade)
 if(requireNamespace("mgcv", quietly = TRUE)) {
     enmtools.gam(iberolacerta.clade$species$monticola, env = euro.worldclim, f = pres ~ bio1 + bio9)
 }

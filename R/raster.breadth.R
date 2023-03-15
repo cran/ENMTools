@@ -13,8 +13,6 @@
 #' @keywords keywords
 #'
 #' @examples
-#' data(iberolacerta)
-#' data(euro.worldclim)
 #' aurelioi.glm <- enmtools.glm(iberolacerta.clade$species$aurelioi, euro.worldclim,
 #' f = pres ~ bio1 + bio12)
 #' raster.breadth(aurelioi.glm)
@@ -28,10 +26,10 @@ raster.breadth <- function(x, verbose=FALSE){
   if(verbose){print(paste("Starting breadth on", x, "at", Sys.time()))}
   x <- raster.standardize(x)
 
-  x[which(getValues(x) == 0)] <- 1e-40
+  x[which(terra::values(x) == 0)] <- 1e-40
 
-  B1 <- calc.B1(getValues(x))
-  B2 <- calc.B2(getValues(x))
+  B1 <- calc.B1(terra::values(x))
+  B2 <- calc.B2(terra::values(x))
 
   results <- list(B1 = B1, B2 = B2)
   return(results)
