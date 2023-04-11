@@ -1,6 +1,6 @@
-b9046901162a43cd8a91847d30ed96ce *DESCRIPTION
+4f568e0303bf5c524d7dc447bb04d556 *DESCRIPTION
 5e6a7302a166afca647d75eb6cf415d8 *NAMESPACE
-da272420205de223c4f911d3bacf75f2 *NEWS.md
+40b671c96dd56f4be7d3c564caeeda57 *NEWS.md
 43f689a389181cdb0dbb90cafa64be1b *R/add.env.R
 c986c58282ac79610d6623870fd93f33 *R/background.buffer.R
 2d88907966df471b3bdbdeab116f9e54 *R/background.points.buffer.R
@@ -26,7 +26,7 @@ e7020ff0fbdd06fb1094c1eecfa05e51 *R/enmtools.ecospat.id.R
 01fae76f815e66e3909d6e7165f7528c *R/enmtools.gam.R
 9d8721bb1a243e8d699345f0035eac8d *R/enmtools.glm.R
 a868a0b56d2498459d2fa60e9c68e6b9 *R/enmtools.hypervolume.R
-11efcfb77b197c7444b831a457ea3df6 *R/enmtools.maxent.R
+eaa37e3043c412be4568a0ff42f2cc7e *R/enmtools.maxent.R
 8d794993b80e2922d3d9cc68c103ea94 *R/enmtools.rf.R
 100126e8bf91398a42c3a3ec35b99271 *R/enmtools.rf.ranger.R
 086be488a46a26730afefba66fe922b9 *R/enmtools.species.R
