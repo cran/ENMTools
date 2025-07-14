@@ -1,6 +1,28 @@
 ENMTools 1.x
 ============
 
+ENMTools 1.1.4
+--------------
+
+### Bug Fixes
+- Minor adjustments to deal with new version of ggplot2
+
+ENMTools 1.1.3
+--------------
+
+### Bug Fixes
+
+- Fixes to background.buffer
+
+
+ENMTools 1.1.2
+--------------
+
+### Bug Fixes
+
+- Fixed clamping issue with identity test
+- Fixes to raster.standardize
+
 
 ENMTools 1.1.1
 --------------
