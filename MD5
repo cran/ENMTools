@@ -1,6 +1,6 @@
-15642c37d7462c14fa62484f6fc74c09 *DESCRIPTION
+be6e171e7c914fb55f583ce5780b8dfd *DESCRIPTION
 84f7ca5109eb1c194f5b1ad3f944eaa8 *NAMESPACE
-d80da4524f3d4a7f47a847336239587b *NEWS.md
+68e0e4c4658215b6db57b89eb8524fe7 *NEWS.md
 43f689a389181cdb0dbb90cafa64be1b *R/add.env.R
 7b5f9d53899b514d7f594609d341046f *R/background.buffer.R
 2d88907966df471b3bdbdeab116f9e54 *R/background.points.buffer.R
@@ -145,4 +145,4 @@ d418a8cb6cb95a9136230b409f9d21e5 *man/species.from.file.Rd
 c90304e28adc1932ff47397d74a98c57 *tests/testthat.R
 b3b74e03c27dfe1bbdd713390138c227 *tests/testthat/helper_make_species.R
 9ee8ea195b489433c1d93b2cb69bdc28 *tests/testthat/sysdata.rda
-9524072369ab76d597478e34f6ad2738 *tests/testthat/test_ENMTools.R
+368d13437e976d226db93567414f3558 *tests/testthat/test_ENMTools.R

@@ -1,6 +1,12 @@
 ENMTools 1.x
 ============
 
+ENMTools 1.1.5
+--------------
+
+### Bug Fixes
+- Fixing error with previous upload
+
 ENMTools 1.1.4
 --------------
 
